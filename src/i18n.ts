@@ -5,6 +5,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import en from './locales/en.json';
 import zh from './locales/zh.json';
+import vi from './locales/vi.json';
 
 i18n
     // detect user language
@@ -25,6 +26,12 @@ i18n
             // Handling 'zh-CN' as 'zh'
             'zh-CN': {
                 translation: zh
+            },
+            vi: {
+                translation: vi
+            },
+            'vi-VN': {
+                translation: vi
             }
         },
         fallbackLng: 'en',

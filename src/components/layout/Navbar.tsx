@@ -74,13 +74,29 @@ function Navbar() {
 
     const toggleLanguage = async () => {
         if (!config) return;
-        const newLang = config.language === 'zh' ? 'en' : 'zh';
+        let newLang = 'zh';
+        if (config.language === 'zh') newLang = 'en';
+        else if (config.language === 'en') newLang = 'vi';
+        else newLang = 'zh';
+
         await saveConfig({
             ...config,
             language: newLang,
             theme: config.theme
         });
         i18n.changeLanguage(newLang);
+    };
+
+    const getNextLangLabel = () => {
+        if (config?.language === 'zh') return 'EN';
+        if (config?.language === 'en') return 'VI';
+        return '中';
+    };
+
+    const getNextLangTitle = () => {
+        if (config?.language === 'zh') return 'Switch to English';
+        if (config?.language === 'en') return 'Chuyển sang Tiếng Việt';
+        return '切换到中文';
     };
 
     return (
@@ -139,10 +155,10 @@ function Navbar() {
                         <button
                             onClick={toggleLanguage}
                             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
-                            title={config?.language === 'zh' ? 'Switch to English' : '切换到中文'}
+                            title={getNextLangTitle()}
                         >
                             <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                                {config?.language === 'zh' ? 'EN' : '中'}
+                                {getNextLangLabel()}
                             </span>
                         </button>
                     </div>

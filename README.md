@@ -3,8 +3,8 @@
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
-  <h3>您的个人高性能 AI 调度网关</h3>
-  <p>不仅仅是账号管理，更是打破 API 调用壁垒的终极解决方案。</p>
+  <h3>Cổng điều phối AI hiệu suất cao cá nhân của bạn</h3>
+  <p>Không chỉ là quản lý tài khoản, mà còn là giải pháp tối ưu để phá vỡ rào cản gọi API.</p>
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
@@ -17,145 +17,175 @@
   </p>
 
   <p>
-    <a href="#-核心功能">核心功能</a> • 
-    <a href="#-界面导览">界面导览</a> • 
-    <a href="#-技术架构">技术架构</a> • 
-    <a href="#-安装指南">安装指南</a> • 
-    <a href="#-快速接入">快速接入</a>
+    <a href="#-tính-năng-cốt-lõi">Tính năng cốt lõi</a> • 
+    <a href="#-giao-diện">Giao diện</a> • 
+    <a href="#-kiến-trúc-kỹ-thuật">Kiến trúc kỹ thuật</a> • 
+    <a href="#-hướng-dẫn-cài-đặt">Hướng dẫn cài đặt</a> • 
+    <a href="#-kết-nối-nhanh">Kết nối nhanh</a>
   </p>
 
   <p>
-    <strong>简体中文</strong> | 
+    <strong>Tiếng Việt</strong> | 
     <a href="./README_EN.md">English</a>
   </p>
 </div>
 
 ---
 
-**Antigravity Tools** 是一个专为开发者和 AI 爱好者设计的全功能桌面应用。它将多账号管理、协议转换和智能请求调度完美结合，为您提供一个稳定、极速且成本低廉的 **本地 AI 中转站**。
+**Antigravity Tools** là một ứng dụng máy tính để bàn đầy đủ tính năng được thiết kế cho các nhà phát triển và những người đam mê AI. Nó kết hợp hoàn hảo việc quản lý đa tài khoản, chuyển đổi giao thức và điều phối yêu cầu thông minh, mang đến cho bạn một **trạm trung chuyển AI cục bộ** ổn định, cực nhanh và chi phí thấp.
 
-通过本应用，您可以将常见的 Web 端 Session (Google/Anthropic) 转化为标准化的 API 接口，彻底消除不同厂商间的协议鸿沟。
+Thông qua ứng dụng này, bạn có thể chuyển đổi Session Web thông thường (Google/Anthropic) thành các giao diện API tiêu chuẩn, loại bỏ hoàn toàn khoảng cách giao thức giữa các nhà cung cấp khác nhau.
 
-## 🌟 深度功能解析 (Detailed Features)
+## 🌟 Phân tích tính năng chuyên sâu (Detailed Features)
 
-### 1. 🎛️ 智能账号仪表盘 (Smart Dashboard)
-*   **全局实时监控**: 一眼洞察所有账号的健康状况，包括 Gemini Pro、Gemini Flash、Claude 以及 Gemini 绘图的 **平均剩余配额**。
-*   **最佳账号推荐 (Smart Recommendation)**: 系统会根据当前所有账号的配额冗余度，实时算法筛选并推荐“最佳账号”，支持 **一键切换**。
-*   **活跃账号快照**: 直观显示当前活跃账号的具体配额百分比及最后同步时间。
+### 1. 🎛️ Bảng điều khiển tài khoản thông minh (Smart Dashboard)
+*   **Giám sát thời gian thực toàn cầu**: Nhìn thoáng qua tình trạng sức khỏe của tất cả các tài khoản, bao gồm **hạn ngạch còn lại trung bình** của Gemini Pro, Gemini Flash, Claude và Gemini Drawing.
+*   **Đề xuất tài khoản tốt nhất (Smart Recommendation)**: Hệ thống sẽ lọc và đề xuất "tài khoản tốt nhất" dựa trên mức độ dư thừa hạn ngạch của tất cả các tài khoản hiện tại theo thời gian thực, hỗ trợ **chuyển đổi một cú nhấp chuột**.
+*   **Ảnh chụp nhanh tài khoản hoạt động**: Hiển thị trực quan tỷ lệ phần trăm hạn ngạch cụ thể và thời gian đồng bộ hóa cuối cùng của tài khoản đang hoạt động.
 
-### 2. 🔐 强大的账号管家 (Account Management)
-*   **OAuth 2.0 授权（自动/手动）**: 添加账号时会提前生成可复制的授权链接，支持在任意浏览器完成授权；回调成功后应用会自动完成并保存（必要时可点击“我已授权，继续”手动收尾）。
-*   **多维度导入**: 支持单条 Token 录入、JSON 批量导入（如来自其他工具的备份），以及从 V1 旧版本数据库自动热迁移。
-*   **网关级视图**: 支持“列表”与“网格”双视图切换。提供 403 封禁检测，自动标注并跳过权限异常的账号。
+### 2. 🔐 Quản lý tài khoản mạnh mẽ (Account Management)
+*   **Ủy quyền OAuth 2.0 (Tự động/Thủ công)**: Khi thêm tài khoản, liên kết ủy quyền có thể sao chép sẽ được tạo trước, hỗ trợ hoàn tất ủy quyền trên bất kỳ trình duyệt nào; sau khi gọi lại thành công, ứng dụng sẽ tự động hoàn tất và lưu (nếu cần, bạn có thể nhấp vào "Tôi đã ủy quyền, tiếp tục" để hoàn tất thủ công).
+*   **Nhập đa chiều**: Hỗ trợ nhập Token đơn lẻ, nhập hàng loạt JSON (ví dụ: sao lưu từ các công cụ khác) và di chuyển nóng tự động từ cơ sở dữ liệu phiên bản cũ V1.
+*   **Chế độ xem cấp cổng**: Hỗ trợ chuyển đổi chế độ xem kép "Danh sách" và "Lưới". Cung cấp khả năng phát hiện lệnh cấm 403, tự động đánh dấu và bỏ qua các tài khoản có quyền bất thường.
 
-### 3. 🔌 协议转换与中继 (API Proxy)
-*   **全协议适配 (Multi-Sink)**:
-    *   **OpenAI 格式**: 提供 `/v1/chat/completions` 端点，兼容 99% 的现有 AI 应用。
-    *   **Anthropic 格式**: 提供原生 `/v1/messages` 接口，支持 **Claude Code CLI** 的全功能（如思思维链、系统提示词）。
-    *   **Gemini 格式**: 支持 Google 官方 SDK 直接调用。
-*   **智能状态自愈**: 当请求遇到 `429 (Too Many Requests)` 或 `401 (Expire)` 时，后端会毫秒级触发 **自动重试与静默轮换**，确保业务不中断。
+### 3. 🔌 Chuyển đổi giao thức và chuyển tiếp (API Proxy)
+*   **Thích ứng toàn giao thức (Multi-Sink)**:
+    *   **Định dạng OpenAI**: Cung cấp điểm cuối `/v1/chat/completions`, tương thích với 99% các ứng dụng AI hiện có.
+    *   **Định dạng Anthropic**: Cung cấp giao diện `/v1/messages` gốc, hỗ trợ đầy đủ chức năng của **Claude Code CLI** (như chuỗi tư duy, từ nhắc hệ thống).
+    *   **Định dạng Gemini**: Hỗ trợ gọi trực tiếp SDK chính thức của Google.
+*   **Tự phục hồi trạng thái thông minh**: Khi yêu cầu gặp lỗi `429 (Too Many Requests)` hoặc `401 (Expire)`, backend sẽ kích hoạt **tự động thử lại và luân chuyển im lặng** trong mili giây, đảm bảo hoạt động kinh doanh không bị gián đoạn.
 
-### 4. 🔀 模型路由中心 (Model Router)
-*   **系列化映射**: 您可以将复杂的原始模型 ID 归类到“规格家族”（如将所有 GPT-4 请求统一路由到 `gemini-3-pro-high`）。
-*   **专家级重定向**: 支持自定义正则表达式级模型映射，精准控制每一个请求的落地模型。
+### 4. 🔀 Trung tâm định tuyến mô hình (Model Router)
+*   **Ánh xạ theo sê-ri**: Bạn có thể phân loại các ID mô hình gốc phức tạp vào "gia đình quy cách" (ví dụ: định tuyến tất cả các yêu cầu GPT-4 đến `gemini-3-pro-high`).
+*   **Chuyển hướng cấp chuyên gia**: Hỗ trợ ánh xạ mô hình cấp biểu thức chính quy tùy chỉnh, kiểm soát chính xác mô hình đích của từng yêu cầu.
 
-### 5. 🎨 多模态与 Imagen 3 支持
-*   **高级画质控制**: 支持通过 OpenAI `size` (如 `1024x1024`, `16:9`) 参数自动映射到 Imagen 3 的相应规格。
-*   **超强 Body 支持**: 后端支持高达 **100MB** 的 Payload，处理 4K 高清图识别绰绰有余。
+### 5. 🎨 Hỗ trợ đa phương thức và Imagen 3
+*   **Kiểm soát chất lượng hình ảnh nâng cao**: Hỗ trợ tự động ánh xạ các tham số `size` của OpenAI (như `1024x1024`, `16:9`) sang các quy cách tương ứng của Imagen 3.
+*   **Hỗ trợ Body siêu mạnh**: Backend hỗ trợ Payload lên đến **100MB**, dư sức xử lý nhận dạng hình ảnh độ nét cao 4K.
 
-## 📸 界面导览 (GUI Overview)
+## 📸 Giao diện (GUI Overview)
 
 ````carousel
-![仪表盘 - 全局配额监控与一键切换](docs/images/dashboard-light.png)
+![Bảng điều khiển - Giám sát hạn ngạch toàn cầu và chuyển đổi một cú nhấp chuột](docs/images/dashboard-light.png)
 <!-- slide -->
-![账号列表 - 高密度配额展示与 403 智能标注](docs/images/accounts-light.png)
+![Danh sách tài khoản - Hiển thị hạn ngạch mật độ cao và đánh dấu thông minh 403](docs/images/accounts-light.png)
 <!-- slide -->
-![关于页面 - 关于 Antigravity Tools](docs/images/about-dark.png)
+![Giới thiệu - Về Antigravity Tools](docs/images/about-dark.png)
 <!-- slide -->
-![API 反代 - 服务控制](docs/images/v3/proxy-settings.png)
+![API Proxy - Kiểm soát dịch vụ](docs/images/v3/proxy-settings.png)
 <!-- slide -->
-![系统设置 - 通用配置](docs/images/settings-dark.png)
+![Cài đặt hệ thống - Cấu hình chung](docs/images/settings-dark.png)
 ````
 
-## 🏗️ 技术架构 (Architecture)
+## 🏗️ Kiến trúc kỹ thuật (Architecture)
+
+### Tổng quan dự án
+Antigravity Tools là một ứng dụng máy tính để bàn hiệu suất cao, đóng vai trò là cổng AI và trình quản lý tài khoản. Nó cho phép người dùng quản lý nhiều tài khoản AI (đặc biệt là Google Gemini và Anthropic Claude), giám sát hạn ngạch và cung cấp proxy API cục bộ giúp chuẩn hóa các giao thức của nhà cung cấp AI khác nhau thành các định dạng phổ biến (OpenAI, Anthropic, Gemini).
+
+### Ngăn xếp công nghệ (Tech Stack)
+
+#### Core Framework
+- **Tauri v2**: Ứng dụng được xây dựng bằng Tauri, cung cấp thời gian chạy nhẹ bằng cách tận dụng webview gốc của hệ điều hành và backend Rust.
+
+#### Frontend (UI)
+- **Framework**: React 19
+- **Build Tool**: Vite 7
+- **Ngôn ngữ**: TypeScript
+- **Styling**: TailwindCSS, DaisyUI
+- **Quản lý trạng thái**: Zustand
+- **Routing**: React Router DOM
+- **Đa ngôn ngữ**: i18next
+- **Biểu đồ**: Recharts
+
+#### Backend (Hệ thống & Logic)
+- **Ngôn ngữ**: Rust
+- **Server Framework**: Axum (Server backend hiệu suất cao)
+- **Cơ sở dữ liệu**: SQLite (Lưu trữ dữ liệu tài khoản cục bộ an toàn)
+- **Các mô đun chính**:
+    - `proxy`: Xử lý chặn yêu cầu API, dịch giao thức (Mapper) và chuyển tiếp ngược dòng.
+    - `models`: Định nghĩa cấu trúc dữ liệu cho tài khoản, cấu hình và payload API.
+    - `modules`: Chứa logic cốt lõi cho ghi nhật ký, quản lý khay hệ thống và cấu hình.
+    - `commands`: Hiển thị các chức năng Rust cho frontend thông qua cơ chế IPC của Tauri.
+
+### Sơ đồ luồng dữ liệu
 
 ```mermaid
 graph TD
-    Client([外部应用: Claude Code/NextChat]) -->|OpenAI/Anthropic| Gateway[Antigravity Axum Server]
-    Gateway --> Middleware[中间件: 鉴权/限流/日志]
-    Middleware --> Router[Model Router: ID 映射]
-    Router --> Dispatcher[账号分发器: 轮询/权重]
-    Dispatcher --> Mapper[协议转换器: Request Mapper]
-    Mapper --> Upstream[上游请求: Google/Anthropic API]
-    Upstream --> ResponseMapper[响应转换器: Response Mapper]
+    Client([Ứng dụng bên ngoài: Claude Code/NextChat]) -->|OpenAI/Anthropic| Gateway[Antigravity Axum Server]
+    Gateway --> Middleware[Middleware: Xác thực/Giới hạn tốc độ/Log]
+    Middleware --> Router[Model Router: Ánh xạ ID]
+    Router --> Dispatcher[Bộ phân phối tài khoản: Vòng tròn/Trọng số]
+    Dispatcher --> Mapper[Bộ chuyển đổi giao thức: Request Mapper]
+    Mapper --> Upstream[Yêu cầu ngược dòng: Google/Anthropic API]
+    Upstream --> ResponseMapper[Bộ chuyển đổi phản hồi: Response Mapper]
     ResponseMapper --> Client
 ```
 
-##  安装指南 (Installation)
+##  Hướng dẫn cài đặt (Installation)
 
-### 选项 A: macOS 终端安装 (推荐)
-如果您已安装 [Homebrew](https://brew.sh/)，可以通过以下命令快速安装：
+### Tùy chọn A: Cài đặt qua Terminal macOS (Khuyên dùng)
+Nếu bạn đã cài đặt [Homebrew](https://brew.sh/), bạn có thể cài đặt nhanh bằng các lệnh sau:
 
 ```bash
-# 1. 订阅本仓库的 Tap
+# 1. Đăng ký Tap của kho lưu trữ này
 brew tap lbjlaq/antigravity-manager https://github.com/lbjlaq/Antigravity-Manager
 
-# 2. 安装应用
+# 2. Cài đặt ứng dụng
 brew install --cask antigravity-tools
 ```
-# 如果遇到权限问题，建议使用 --no-quarantine
+# Nếu gặp vấn đề về quyền, hãy sử dụng --no-quarantine
 brew install --cask --no-quarantine antigravity
 ```
 
-### 选项 B: 手动下载
-前往 [GitHub Releases](https://github.com/lbjlaq/Antigravity-Manager/releases) 下载对应系统的包：
-*   **macOS**: `.dmg` (支持 Apple Silicon & Intel)
-*   **Windows**: `.msi` 或 便携版 `.zip`
-*   **Linux**: `.deb` 或 `AppImage`
+### Tùy chọn B: Tải xuống thủ công
+Truy cập [GitHub Releases](https://github.com/lbjlaq/Antigravity-Manager/releases) để tải xuống gói tương ứng với hệ thống của bạn:
+*   **macOS**: `.dmg` (Hỗ trợ Apple Silicon & Intel)
+*   **Windows**: `.msi` hoặc bản di động `.zip`
+*   **Linux**: `.deb` hoặc `AppImage`
 
-### 🛠️ 常见问题排查 (Troubleshooting)
+### 🛠️ Khắc phục sự cố thường gặp (Troubleshooting)
 
-#### macOS 提示“应用已损坏，无法打开”？
-由于 macOS 的安全机制，非 App Store 下载的应用可能会触发此提示。您可以按照以下步骤快速修复：
+#### macOS báo "Ứng dụng bị hỏng, không thể mở"?
+Do cơ chế bảo mật của macOS, các ứng dụng không được tải xuống từ App Store có thể kích hoạt thông báo này. Bạn có thể sửa nhanh theo các bước sau:
 
-1.  **命令行修复** (推荐):
-    打开终端，执行以下命令：
+1.  **Sửa bằng dòng lệnh** (Khuyên dùng):
+    Mở Terminal và chạy lệnh sau:
     ```bash
     sudo xattr -rd com.apple.quarantine "/Applications/Antigravity Tools.app"
     ```
-2.  **Homebrew 安装技巧**:
-    如果您使用 brew 安装，可以添加 `--no-quarantine` 参数来规避此问题：
+2.  **Mẹo cài đặt Homebrew**:
+    Nếu bạn cài đặt bằng brew, bạn có thể thêm tham số `--no-quarantine` để tránh vấn đề này:
     ```bash
     brew install --cask --no-quarantine antigravity
     ```
 
-## 🔌 快速接入示例
+## 🔌 Ví dụ kết nối nhanh
 
-### 🔐 OAuth 授权流程（添加账号）
-1. 打开“Accounts / 账号” → “添加账号” → “OAuth”。
-2. 弹窗会在点击按钮前预生成授权链接；点击链接即可复制到系统剪贴板，然后用你希望的浏览器打开并完成授权。
-3. 授权完成后浏览器会打开本地回调页并显示“✅ 授权成功!”。
-4. 应用会自动继续完成授权并保存账号；如未自动完成，可点击“我已授权，继续”手动完成。
+### 🔐 Quy trình ủy quyền OAuth (Thêm tài khoản)
+1. Mở "Accounts / Tài khoản" → "Thêm tài khoản" → "OAuth".
+2. Cửa sổ bật lên sẽ tạo trước liên kết ủy quyền trước khi nhấp vào nút; nhấp vào liên kết để sao chép vào khay nhớ tạm hệ thống, sau đó mở bằng trình duyệt bạn muốn và hoàn tất ủy quyền.
+3. Sau khi ủy quyền hoàn tất, trình duyệt sẽ mở trang gọi lại cục bộ và hiển thị "✅ Ủy quyền thành công!".
+4. Ứng dụng sẽ tự động tiếp tục hoàn tất ủy quyền và lưu tài khoản; nếu không tự động hoàn tất, bạn có thể nhấp vào "Tôi đã ủy quyền, tiếp tục" để hoàn tất thủ công.
 
-> 提示：授权链接包含一次性回调端口，请始终使用弹窗里生成的最新链接；如果授权时应用未运行或弹窗已关闭，浏览器可能会提示 `localhost refused connection`。
+> Mẹo: Liên kết ủy quyền chứa cổng gọi lại dùng một lần, vui lòng luôn sử dụng liên kết mới nhất được tạo trong cửa sổ bật lên; nếu ứng dụng không chạy hoặc cửa sổ bật lên đã đóng khi ủy quyền, trình duyệt có thể báo `localhost refused connection`.
 
-### 如何接入 Claude Code CLI?
-1.  启动 Antigravity，并在“API 反代”页面开启服务。
-2.  在终端执行：
+### Cách kết nối Claude Code CLI?
+1.  Khởi động Antigravity và bật dịch vụ trong trang "API Proxy".
+2.  Chạy trong terminal:
 ```bash
 export ANTHROPIC_API_KEY="sk-antigravity"
 export ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
 claude
 ```
 
-### 如何接入 Kilo Code?
-1.  **协议选择**: 建议优先使用 **Gemini 协议**。
-2.  **Base URL**: 填写 `http://127.0.0.1:8045`。
-3.  **注意**: 
-    - **OpenAI 协议限制**: Kilo Code 在使用 OpenAI 模式时，其请求路径会叠加产生 `/v1/chat/completions/responses` 这种非标准路径，导致 Antigravity 返回 404。因此请务必填入 Base URL 后选择 Gemini 模式。
-    - **模型映射**: Kilo Code 中的模型名称可能与 Antigravity 默认设置不一致，如遇到无法连接，请在“模型映射”页面设置自定义映射，并查看**日志文件**进行调试。
+### Cách kết nối Kilo Code?
+1.  **Chọn giao thức**: Khuyên dùng **Giao thức Gemini**.
+2.  **Base URL**: Điền `http://127.0.0.1:8045`.
+3.  **Lưu ý**: 
+    - **Hạn chế giao thức OpenAI**: Khi Kilo Code sử dụng chế độ OpenAI, đường dẫn yêu cầu của nó sẽ chồng chéo tạo ra đường dẫn không chuẩn `/v1/chat/completions/responses`, khiến Antigravity trả về 404. Vì vậy, vui lòng điền Base URL và chọn chế độ Gemini.
+    - **Ánh xạ mô hình**: Tên mô hình trong Kilo Code có thể không khớp với cài đặt mặc định của Antigravity. Nếu không thể kết nối, vui lòng thiết lập ánh xạ tùy chỉnh trong trang "Ánh xạ mô hình" và xem **tệp nhật ký** để gỡ lỗi.
 
-### 如何在 Python 中使用?
+### Cách sử dụng trong Python?
 ```python
 import openai
 
@@ -166,107 +196,52 @@ client = openai.OpenAI(
 
 response = client.chat.completions.create(
     model="gemini-3-flash",
-    messages=[{"role": "user", "content": "你好，请自我介绍"}]
+    messages=[{"role": "user", "content": "Xin chào, hãy giới thiệu bản thân"}]
 )
 print(response.choices[0].message.content)
 ```
 
-## 📝 开发者与社区
+## 📝 Nhà phát triển và Cộng đồng
 
-*   **版本演进 (Changelog)**:
+*   **Nhật ký thay đổi (Changelog)**:
     *   **v3.2.8 (2025-12-26)**:
-        - **Bug 修复 (Bug Fixes)**:
-            - **OpenAI 协议多模态与图片模型支持**: 彻底修复了在 OpenAI 协议下向视觉模型(如 `gemini-3-pro-image`)发送图片请求时因 `content` 格式不匹配导致的 400 错误。
-            - **视觉能力全面补齐**: 现在 OpenAI 协议支持自动解析 Base64 图片并映射为上游 `inlineData`,使其具备与 Claude 协议同等的图像处理能力。
+        - **Sửa lỗi (Bug Fixes)**:
+            - **Hỗ trợ đa phương thức và mô hình hình ảnh giao thức OpenAI**: Đã sửa hoàn toàn lỗi 400 do định dạng `content` không khớp khi gửi yêu cầu hình ảnh đến mô hình thị giác (như `gemini-3-pro-image`) theo giao thức OpenAI.
+            - **Bổ sung toàn diện khả năng thị giác**: Hiện tại giao thức OpenAI hỗ trợ tự động phân tích cú pháp hình ảnh Base64 và ánh xạ thành `inlineData` ngược dòng, mang lại khả năng xử lý hình ảnh ngang bằng với giao thức Claude.
     *   **v3.2.7 (2025-12-26)**:
-        - **新功能 (New Features)**:
-            - **开机自动启动**: 新增开机自动启动功能,可在设置页面的"通用"标签中一键开启/关闭系统启动时自动运行 Antigravity Tools。
-            - **账号列表分页大小选择器**: 在账号管理页面的分页栏中新增分页大小选择器,支持直接选择每页显示数量(10/20/50/100 条),无需进入设置页面,提升批量操作效率。
-        - **Bug 修复 (Bug Fixes)**:
-            - **JSON Schema 清理逻辑全面增强 (MCP 工具兼容性修复)**:
-                - **移除高级 Schema 字段**: 新增移除 `propertyNames`, `const`, `anyOf`, `oneOf`, `allOf`, `if/then/else`, `not` 等 MCP 工具常用但 Gemini 不支持的高级 JSON Schema 字段，彻底解决 Claude Code v2.0.76+ 使用 MCP 工具时的 400 错误。
-                - **优化递归清理顺序**: 调整为先递归清理子节点再处理父节点，避免嵌套对象被错误序列化到 description 中。
-                - **Protobuf 类型兼容**: 强制将联合类型数组（如 `["string", "null"]`）降级为单一类型，解决 "Proto field is not repeating" 错误。
-                - **智能字段识别**: 增强类型检查逻辑，确保只在值为对应类型时才移除校验字段，避免误删名为 `pattern` 等的属性定义。
-            - **自定义数据库导入修复**: 修复了"从自定义 DB 导入"功能因 `import_custom_db` 命令未注册导致的 "Command not found" 错误。现在用户可以正常选择自定义路径的 `state.vscdb` 文件进行账号导入。
-            - **反代稳定性与画图性能优化**:
-                - **智能 429 退避机制**: 深度集成 `RetryInfo` 解析，精准遵循 Google API 的重试指令并增加安全冗余，有效降低账号被封禁风险。
-                - **精准错误分流**: 修正了将频率限制误判为配额耗尽的逻辑（不再误杀包含 "check quota" 的报错），确保限流时能自动切换账号。
-                - **画图请求并发加速**: 针对 `image_gen` 类型请求禁用 60s 时间窗口锁定，实现多账号极速轮换，彻底解决画图 429 报错问题。
+        - **Tính năng mới (New Features)**:
+            - **Tự động khởi động khi bật máy**: Đã thêm chức năng tự động khởi động khi bật máy, có thể bật/tắt một lần nhấp trong tab "Chung" của trang cài đặt.
+            - **Bộ chọn kích thước trang danh sách tài khoản**: Đã thêm bộ chọn kích thước trang trong thanh phân trang của trang quản lý tài khoản, hỗ trợ chọn trực tiếp số lượng hiển thị trên mỗi trang (10/20/50/100 mục), không cần vào trang cài đặt, nâng cao hiệu quả thao tác hàng loạt.
+        - **Sửa lỗi (Bug Fixes)**:
+            - **Tăng cường logic dọn dẹp JSON Schema (Tương thích công cụ MCP)**:
+                - **Xóa các trường Schema nâng cao**: Đã thêm xóa các trường JSON Schema nâng cao như `propertyNames`, `const`, `anyOf`, `oneOf`, `allOf`, `if/then/else`, `not` thường được công cụ MCP sử dụng nhưng Gemini không hỗ trợ, giải quyết triệt để lỗi 400 khi Claude Code v2.0.76+ sử dụng công cụ MCP.
+                - **Tối ưu hóa thứ tự dọn dẹp đệ quy**: Điều chỉnh để dọn dẹp đệ quy các nút con trước rồi mới xử lý nút cha, tránh các đối tượng lồng nhau bị tuần tự hóa sai vào description.
+                - **Tương thích loại Protobuf**: Buộc hạ cấp mảng loại hợp nhất (như `["string", "null"]`) thành loại đơn, giải quyết lỗi "Proto field is not repeating".
+                - **Nhận dạng trường thông minh**: Tăng cường logic kiểm tra loại, đảm bảo chỉ xóa trường xác thực khi giá trị là loại tương ứng, tránh xóa nhầm định nghĩa thuộc tính có tên `pattern`, v.v.
+            - **Sửa lỗi nhập cơ sở dữ liệu tùy chỉnh**: Đã sửa lỗi "Command not found" của chức năng "Nhập từ DB tùy chỉnh" do lệnh `import_custom_db` chưa được đăng ký. Giờ đây người dùng có thể chọn tệp `state.vscdb` đường dẫn tùy chỉnh để nhập tài khoản bình thường.
+            - **Ổn định proxy và tối ưu hóa hiệu suất vẽ**:
+                - **Cơ chế lùi 429 thông minh**: Tích hợp sâu phân tích `RetryInfo`, tuân thủ chính xác hướng dẫn thử lại của Google API và tăng dự phòng an toàn, giảm hiệu quả rủi ro bị cấm tài khoản.
+                - **Phân luồng lỗi chính xác**: Đã sửa logic đánh giá sai giới hạn tần suất là cạn kiệt hạn quạch (không còn giết nhầm báo lỗi chứa "check quota"), đảm bảo có thể tự động chuyển tài khoản khi bị giới hạn dòng.
+                - **Tăng tốc đồng thời yêu cầu vẽ**: Vô hiệu hóa khóa cửa sổ thời gian 60 giây cho các yêu cầu loại `image_gen`, thực hiện luân chuyển tài khoản cực nhanh, giải quyết triệt để vấn đề báo lỗi 429 khi vẽ.
     *   **v3.2.6 (2025-12-26)**:
-        - **重大修复 (Critical Fixes)**:
-            - **Claude 协议深度优化 (Claude Code 体验增强)**:
-                - **动态身份映射**: 根据请求模型动态注入身份防护补丁，锁定 Anthropic 原生身份，屏蔽底层中转平台的指令干扰。
-                - **工具空输出补偿**: 针对 `mkdir` 等静默命令，自动将空输出映射为显式成功信号，解决 Claude CLI 任务流中断与幻觉问题。
-                - **全局停止序列配置**: 针对反代链路优化了 `stopSequences`，精准切断流式输出，彻底解决响应尾部冗余导致的解析报错。
-                - **智能 Payload 净化 (Smart Panic Fix)**: 引入了 `GoogleSearch` 与 `FunctionCall` 的互斥检查，并在后台任务（Token Saver）重定向时自动剥离工具负载，彻底根除了 **400 工具冲突 (Multiple tools)** 错误。
-                - **反代稳定性增强 (核心致谢 @salacoste PR #79)**: 
-                    - **429 智能退避**: 支持解析上游 `RetryInfo`，在触发限流时自动等待并重试，显著减少账号无效轮换。
-                    - **Resume 兜底机制**: 针对 `/resume` 可能出现的签名失效报错，实现了自动剥离 Thinking 块的二次重试，提升会话恢复成功率。
-                    - **Schema 模式增强**: 增强了 JSON Schema 递归清理逻辑，并增加了对 `enumCaseInsensitive` 等扩展字段的过滤。
-            - **测试套件加固**: 修复了 `mappers` 测试模块中缺失的导入及重复属性错误，并新增了内容块合并与空输出补全测试。
-    *   **v3.2.3 (2025-12-25)**:
-        - **核心增强 (Core Enhancements)**:
-            - **进程管理架构优化 (核心致谢 @Gaq152 PR #70)**: 
-                - **精确路径识别**: 引入了基于可执行文件绝对路径的进程匹配机制。在启动、关闭及枚举 PID 时，系统会通过规范化路径 (`canonicalize`) 进行比对。
-                - **管理进程自排除**: 在 Linux 等环境下，系统现能通过对比 `std::env::current_exe()` 路径，彻底杜绝了 Antigravity-Manager 将自身误识别为核心进程而发生的“自杀”现象。
-                - **手动路径自定义**: 在“设置 -> 高级”页面新增了手动指定反重力程序路径的功能。支持 MacOS (.app 目录) 和各平台可执行文件。
-                - **自动探测回退**: 新增路径自动探测按钮，并建立了“手动路径优先 -> 自动搜索 -> 注册表/标准目录”的多级检索链。
-        - **体验优化 (UX Improvements)**:
-            - **路径配置 UI**: 提供了文件选择器与一键重置功能，极大地提升了在非标准目录下部署的灵活性。
-            - **多语言适配**: 完整同步了路径管理相关的中英文 I18n 资源。
-    *   **v3.2.2 (2025-12-25)**:
-        - **核心更新 (Core Updates)**:
-            - **全量日志持久化系统升级**: 接入 `tracing-appender` 与 `tracing-log`，实现了终端与文件的双通道日志记录。现在包括系统启动、反代请求全链路（请求/响应/耗时）以及第三方库底层流水在内的所有调试信息，均会实时、自动地归档至本地 `app.log` 中。
-            - **Project ID 获取逻辑容错增强**: 引入了随机 `project_id` 兜底机制。针对部分无 Google Cloud 项目权限的账号，系统现在会自动生成随机 ID 以确保反代服务及配额查询能正常运行，彻底解决了“账号无资格获取 cloudaicompanionProject”导致的报错中断。
-            - **全场景稳定性加固**: 引入 `try_init` 模式修复了由于日志订阅器重复初始化导致的系统 Panic 崩溃，显著提升了在不同运行环境下的兼容性。
-            - **平滑日志清理**: 优化了日志清理逻辑，采用“原地截断”技术。现在点击“清理日志”后，后续的操作记录依然能无缝地继续保存，解决了旧版本清理后记录失效的问题。
-            - **Google 免费额度智能路由 (Token Saver):** 
-                - **后台任务拦截**: 独家首创针对 Claude Code 客户端后台任务的深度报文识别技术。系统能精准识别标题生成、摘要提取以及 **Next Prompt Suggestions** 等非核心交互请求 (`write a 5-10 word title`, `Concise summary`, `prompt suggestion generator`)。
-                - **无感熔断重定向**: 自动将上述高频低价值请求（Haiku 模型）路由至 **gemini-2.5-flash** 免费节点，彻底杜绝了后台轮询对核心付费/高价值账号配额的隐形消耗，同时保留了完整的产品功能体验。
-                - **双轨日志审计**: 终端与日志文件中新增请求类型标记。正常对话请求显示为 `检测到正常用户请求`（保留原映射），后台任务显示为 `检测到后台自动任务`（重定向），消耗去向一目了然。
-            - **时间窗口会话锁定 (Session Sticky):** 实施了基于滑动时间窗口（60秒）的账号锁定策略。确保单一会话内的连续交互强制绑定同一账号，有效解决了因多账号轮询导致的上下文漂移问题，大幅提升了长对话的连贯性。
-        - **Bug 修复 (Bug Fixes)**:
-            - **Claude 思维链签名 (Signature) 校验最终修复**: 彻底解决了在多轮对话中，由于历史 Assistant 消息缺少 `thoughtSignature` 而导致的 `400 INVALID_ARGUMENT` 错误。
-            - **Gemini 模型映射误匹配修复**: 修正了模型路由关键词匹配逻辑，解决了 `gemini` 单词中包含 `mini` 从而被误判定为 OpenAI 分组的问题。现在 Gemini 模型能正确实现原名穿透。
-            - **注入策略优化**: 改进了虚拟思维块的注入逻辑，限制为仅针对当前回复（Pre-fill）场景，确保历史记录的原始签名不被破坏。
-            - **环境静默清理**: 清理了全工程 20 余处过时的编译警告、冗余导入与未使用变量，系统运行更轻快。
-        - **兼容性说明 (Compatibility)**:
-            - **Kilo Code 专项优化**: 在快速接入章节新增了针对 Kilo Code 的配置指南与避坑说明。
-    *   **v3.2.1 (2025-12-25)**:
-        - **新特性 (New Features)**:
-            - **自定义 DB 导入**: 支持从任意路径选择并导入 `state.vscdb` 文件，方便从备份或其他位置恢复账号数据。
-            - **Project ID 实时同步与持久化**: 引入配额查询伴随加载机制。现在手动或自动刷新配额时，系统会实时捕捉并保存最新的 `project_id` 到本地。
-            - **OpenAI & Gemini 协议全方位增强**:
-                - **全协议路由统一**: 现在 **Gemini 协议也已支持自定义模型映射**。至此，OpenAI、Claude、Gemini 三大协议已全部打通智能路由逻辑。
-                - **工具调用 (Tool Call) 全面支持**: 无论是非流式还是流式响应，现在都能正确处理并下发联网搜索等 `functionCall` 结果，彻底解决了“空输出”报错。
-                - **思维链 (Thought) 实时显示**: 能够自动提取并呈现 Gemini 2.0+ 的推理过程，并通过 `<thought>` 标签在输出中展示，推理信息不再丢失。
-                - **高级参数映射补齐**: 新增对 `stop` 序列、`response_format` (JSON 模式) 以及 `tools` 自定义工具的完整映射支持。
-        - **Bug 修复 (Bug Fixes)**:
-            - **OpenAI 自定义映射 404 修复**: 修正了模型路由选取逻辑。现在无论何种协议，均能正确使用映射后的上游模型 ID，彻底解决自定义映射报 404 的问题。
-            - **Linux 进程管理最终优化**: 完成了针对 Linux 系统下切换账号时的进程关闭逻辑。目前已全面支持智能进程识别与分阶段退出。
-            - **OpenAI 协议适配修复**: 修复了部分客户端发送 `system` 消息导致报错的问题。
-            - **反代重试机制优化**: 引入智能错误识别与重试上限机制。
-            - **JSON Schema 深度清理 (兼容性增强)**: 建立了统一的清理机制，自动滤除 Gemini 不支持的 20 余种扩展字段（如 `multipleOf`、`exclusiveMinimum`、`pattern`、`const`、`if-then-else` 等），彻底解决 CLI 工具通过 API 调用工具时的 400 报错。
-            - **单账号切换限制修复**: 解决了当只有一个账号时切换按钮被禁用的问题。现在即使只有单个账号，也能通过点击切换按钮手动执行 Token 注入流程。
-            - **Claude 思维链校验错误修复**: 解决了启用思维链时 assistant 消息必须以思维块开头的结构校验问题。现在系统支持自动注入占位思维块以及从文本中自动还原 `<thought>` 标签，确保 Claude Code 等高级工具的长对话稳定性。
-    *   **v3.2.0 (2025-12-24)**:
-        - **核心架构重构 (Core Architecture Refactor)**:
-            - **API 反代引擎重写**: 采用模块化设计重构 `proxy` 模块，实现了 `mappers` (协议转换)、`handlers` (请求处理)、`middleware` (中间件) 的完全解耦，大幅提升代码可维护性与扩展性。
-            - **Linux 进程管理优化**: 引入智能进程识别算法，精准区分主进程与 Helper 进程，支持 SIGTERM -> SIGKILL 兜底逻辑。
-        - **GUI 交互革命**: 全面重构仪表盘，引入平均配额监控与“最佳账号推荐”算法。
-        - **账号管理增强**: 支持多种格式（JSON/正则）批量导入 Token，优化 OAuth 授权流程。
-        - **协议与路由扩展**: 原生支持 OpenAI, Anthropic (Claude Code) 协议；新增“模型路由中心”，实现高精度 ID 映射。
-        - **多模态优化**: 深度适配 Imagen 3，支持 100MB 超大 Payload 与多种比例参数透传。
-        - **安装体验优化**: 正式支持 Homebrew Cask 安装；内置 macOS “应用损坏”自动化排查指南。
-        - **提示**：目前 `antigravity` 与 Google 官方工具重名。为确保安装的是本项目，目前推荐使用上述原始文件安装。后续我们将推出官方 Tap。
-        - **全局上游代理**: 统一管理内外网请求，支持 HTTP/SOCKS5 协议及热重载。
-*   **版权许可**: 基于 **CC BY-NC-SA 4.0** 许可，**严禁任何形式的商业行为**。
-*   **安全声明**: 本应用所有账号数据加密存储于本地 SQLite 数据库，除非开启同步功能，否则数据绝不离开您的设备。
+        - **Sửa lỗi nghiêm trọng (Critical Fixes)**:
+            - **Tối ưu hóa sâu giao thức Claude (Tăng cường trải nghiệm Claude Code)**:
+                - **Ánh xạ danh tính động**: Tự động tiêm bản vá bảo vệ danh tính dựa trên mô hình yêu cầu, khóa danh tính gốc Anthropic, chặn nhiễu lệnh từ nền tảng trung chuyển bên dưới.
+                - **Bù đắp đầu ra rỗng của công cụ**: Đối với các lệnh im lặng như `mkdir`, tự động ánh xạ đầu ra rỗng thành tín hiệu thành công rõ ràng, giải quyết vấn đề gián đoạn dòng tác vụ và ảo giác của Claude CLI.
+                - **Cấu hình chuỗi dừng toàn cầu**: Tối ưu hóa `stopSequences` cho liên kết proxy, cắt chính xác đầu ra luồng, giải quyết triệt để báo lỗi phân tích cú pháp do dư thừa phần đuôi phản hồi.
+                - **Làm sạch Payload thông minh (Smart Panic Fix)**: Giới thiệu kiểm tra loại trừ lẫn nhau giữa `GoogleSearch` và `FunctionCall`, và tự động tách tải công cụ khi chuyển hướng tác vụ nền (Token Saver), loại bỏ hoàn toàn lỗi **400 Xung đột công cụ (Multiple tools)**.
+                - **Tăng cường ổn định proxy (Cảm ơn nòng cốt @salacoste PR #79)**: 
+                    - **Lùi thông minh 429**: Hỗ trợ phân tích `RetryInfo` ngược dòng, tự động chờ và thử lại khi kích hoạt giới hạn dòng, giảm đáng kể luân chuyển tài khoản không hợp lệ.
+                    - **Cơ chế dự phòng Resume**: Đối với báo lỗi chữ ký không hợp lệ có thể xuất hiện ở `/resume`, thực hiện thử lại lần hai tự động tách khối Thinking, nâng cao tỷ lệ thành công khôi phục phiên.
+                    - **Tăng cường chế độ Schema**: Tăng cường logic dọn dẹp đệ quy JSON Schema, và thêm lọc các trường mở rộng như `enumCaseInsensitive`.
+            - **Củng cố bộ thử nghiệm**: Đã sửa lỗi thiếu nhập và thuộc tính trùng lặp trong mô đun thử nghiệm `mappers`, và thêm thử nghiệm hợp nhất khối nội dung và hoàn thành đầu ra rỗng.
+
+*   **Giấy phép**: Dựa trên giấy phép **CC BY-NC-SA 4.0**, **nghiêm cấm mọi hình thức hành vi thương mại**.
+*   **Tuyên bố bảo mật**: Tất cả dữ liệu tài khoản của ứng dụng này được lưu trữ mã hóa trong cơ sở dữ liệu SQLite cục bộ, trừ khi bật chức năng đồng bộ hóa, dữ liệu sẽ không bao giờ rời khỏi thiết bị của bạn.
 
 ---
 
 <div align="center">
-  <p>如果您觉得这个工具有所帮助，欢迎在 GitHub 上点一个 ⭐️</p>
+  <p>Nếu bạn thấy công cụ này hữu ích, vui lòng cho một ⭐️ trên GitHub</p>
   <p>Copyright © 2025 Antigravity Team.</p>
 </div>

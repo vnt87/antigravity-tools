@@ -1,0 +1,382 @@
+{
+    "common": {
+        "loading": "Đang tải...",
+        "add": "Thêm",
+        "action": "Thao tác",
+        "save": "Lưu",
+        "saved": "Lưu thành công",
+        "cancel": "Hủy",
+        "confirm": "Xác nhận",
+        "delete": "Xóa",
+        "edit": "Chỉnh sửa",
+        "refresh": "Làm mới",
+        "refreshing": "Đang làm mới...",
+        "export": "Xuất",
+        "import": "Nhập",
+        "success": "Thành công",
+        "error": "Lỗi",
+        "unknown": "Không xác định",
+        "warning": "Cảnh báo",
+        "info": "Thông tin",
+        "details": "Chi tiết",
+        "clear": "Xóa",
+        "prev_page": "Trang trước",
+        "next_page": "Trang sau",
+        "pagination_info": "Hiển thị {{start}} đến {{end}} trong tổng số {{total}} mục",
+        "per_page": "Mỗi trang",
+        "items": "mục",
+        "accounts": "tài khoản"
+    },
+    "nav": {
+        "dashboard": "Bảng điều khiển",
+        "accounts": "Quản lý tài khoản",
+        "proxy": "API Proxy",
+        "settings": "Cài đặt"
+    },
+    "dashboard": {
+        "hello": "Xin chào, Người dùng 👋",
+        "refresh_quota": "Làm mới hạn ngạch",
+        "refreshing": "Đang làm mới...",
+        "total_accounts": "Tổng số tài khoản",
+        "avg_gemini": "Hạn ngạch Gemini trung bình",
+        "avg_gemini_image": "Hạn ngạch vẽ Gemini trung bình",
+        "avg_claude": "Hạn ngạch Claude trung bình",
+        "low_quota_accounts": "Tài khoản hạn ngạch thấp",
+        "quota_sufficient": "✓ Hạn ngạch đầy đủ",
+        "quota_low": "⚠ Hạn ngạch thấp",
+        "quota_desc": "Hạn ngạch < 20%",
+        "current_account": "Tài khoản hiện tại",
+        "switch_account": "Chuyển đổi tài khoản",
+        "no_active_account": "Không có tài khoản hoạt động",
+        "best_accounts": "Đề xuất tài khoản tối ưu",
+        "best_account_recommendation": "Đề xuất tài khoản tối ưu",
+        "switch_best": "Chuyển sang tối ưu nhất",
+        "switch_successfully": "Chuyển sang tối ưu nhất",
+        "view_all_accounts": "Xem tất cả tài khoản",
+        "export_data": "Xuất dữ liệu tài khoản",
+        "for_gemini": "Dành cho Gemini",
+        "for_claude": "Dành cho Claude",
+        "toast": {
+            "switch_success": "Chuyển đổi thành công!",
+            "switch_error": "Chuyển đổi tài khoản thất bại",
+            "refresh_success": "Làm mới hạn ngạch thành công",
+            "refresh_error": "Làm mới thất bại",
+            "export_no_accounts": "Không có tài khoản để xuất",
+            "export_success": "Xuất thành công! Tệp đã được lưu tại: {{path}}",
+            "export_error": "Xuất thất bại"
+        }
+    },
+    "accounts": {
+        "search_placeholder": "Tìm kiếm email...",
+        "all": "Tất cả",
+        "available": "Khả dụng",
+        "low_quota": "Hạn ngạch thấp",
+        "add_account": "Thêm tài khoản",
+        "refresh_all": "Làm mới tất cả",
+        "refresh_selected": "Làm mới ({{count}})",
+        "export_selected": "Xuất ({{count}})",
+        "delete_selected": "Xóa ({{count}})",
+        "current": "Hiện tại",
+        "current_badge": "Hiện tại",
+        "forbidden": "403",
+        "forbidden_badge": "403",
+        "forbidden_tooltip": "API trả về 403 Forbidden, tài khoản không có quyền sử dụng Gemini Code Assist",
+        "forbidden_msg": "Tài khoản không có quyền, đã bỏ qua tự động làm mới",
+        "no_data": "Không có dữ liệu",
+        "last_used": "Sử dụng lần cuối",
+        "reset_time": "Thời gian đặt lại",
+        "switch_to": "Chuyển sang tài khoản này",
+        "actions": "Thao tác",
+        "details": {
+            "title": "Chi tiết hạn ngạch"
+        },
+        "add": {
+            "title": "Thêm tài khoản mới",
+            "tabs": {
+                "oauth": "Ủy quyền OAuth",
+                "token": "Refresh Token",
+                "import": "Nhập từ CSDL"
+            },
+            "oauth": {
+                "recommend": "Phương thức đề xuất",
+                "desc": "Sẽ mở trình duyệt mặc định để ủy quyền đăng nhập Google, tự động lấy và lưu Token.",
+                "btn_start": "Bắt đầu ủy quyền OAuth",
+                "btn_waiting": "Đang chờ ủy quyền...",
+                "btn_finish": "Tôi đã ủy quyền, tiếp tục",
+                "copy_link": "Sao chép liên kết ủy quyền",
+                "copied": "Đã sao chép",
+                "link_label": "Liên kết ủy quyền",
+                "link_click_to_copy": "Nhấp để sao chép"
+            },
+            "token": {
+                "label": "Refresh Token",
+                "placeholder": "Dán Refresh Token của bạn vào đây (Hỗ trợ hàng loạt)\n\nĐịnh dạng hỗ trợ:\n1. Token đơn (1//...)\n2. Mảng JSON (có trường refresh_token)\n3. Bất kỳ văn bản nào chứa Token (Tự động trích xuất)",
+                "hint": "Mẹo: Hỗ trợ dán nhiều Token hoặc mảng JSON cùng lúc, hệ thống sẽ tự động nhận dạng và nhập hàng loạt.",
+                "error_token": "Vui lòng nhập Refresh Token",
+                "batch_progress": "Đang nhập tài khoản thứ {{current}}/{{total}}...",
+                "batch_success": "Nhập thành công {{count}} tài khoản",
+                "batch_partial": "Nhập hoàn tất: {{success}} thành công, {{fail}} thất bại",
+                "batch_fail": "Nhập thất bại"
+            },
+            "import": {
+                "scheme_a": "Phương án A: Từ CSDL IDE hiện tại",
+                "scheme_a_desc": "Tự động đọc thông tin tài khoản đang đăng nhập từ cơ sở dữ liệu Antigravity cục bộ.",
+                "btn_db": "Nhập tài khoản hiện tại",
+                "or": "Hoặc",
+                "scheme_b": "Phương án B: Từ bản sao lưu V1",
+                "scheme_b_desc": "Quét thư mục ~/.antigravity-agent, nhập hàng loạt dữ liệu tài khoản phiên bản cũ.",
+                "btn_v1": "Nhập hàng loạt từ sao lưu V1",
+                "btn_custom_db": "Nhập từ CSDL tùy chỉnh"
+            },
+            "btn_cancel": "Hủy",
+            "btn_confirm": "Xác nhận thêm",
+            "status": {
+                "error_token": "Vui lòng nhập Refresh Token"
+            }
+        },
+        "table": {
+            "email": "Email",
+            "quota": "Hạn ngạch mô hình",
+            "last_used": "Sử dụng lần cuối",
+            "actions": "Thao tác"
+        },
+        "empty": {
+            "title": "Chưa có tài khoản",
+            "desc": "Nhấp vào nút \"Thêm tài khoản\" phía trên để thêm tài khoản đầu tiên"
+        },
+        "views": {
+            "list": "Chế độ danh sách",
+            "grid": "Chế độ lưới"
+        },
+        "dialog": {
+            "add_title": "Thêm tài khoản mới",
+            "batch_delete_title": "Xác nhận xóa hàng loạt",
+            "delete_title": "Xác nhận xóa",
+            "batch_delete_msg": "Bạn có chắc chắn muốn xóa {{count}} tài khoản đã chọn không? Thao tác này không thể hoàn tác.",
+            "delete_msg": "Bạn có chắc chắn muốn xóa tài khoản này không? Thao tác này không thể hoàn tác.",
+            "refresh_title": "Làm mới hạn ngạch",
+            "batch_refresh_title": "Làm mới hàng loạt",
+            "refresh_msg": "Bạn có chắc chắn muốn làm mới hạn ngạch cho tài khoản hiện tại không?",
+            "batch_refresh_msg": "Bạn có chắc chắn muốn làm mới hạn ngạch cho {{count}} tài khoản đã chọn không? Việc này có thể mất một chút thời gian."
+        }
+    },
+    "settings": {
+        "save": "Lưu cài đặt",
+        "tabs": {
+            "general": "Chung",
+            "account": "Tài khoản",
+            "proxy": "Cài đặt Proxy",
+            "advanced": "Nâng cao",
+            "about": "Giới thiệu"
+        },
+        "general": {
+            "title": "Cài đặt chung",
+            "language": "Ngôn ngữ",
+            "theme": "Giao diện",
+            "theme_light": "Sáng",
+            "theme_dark": "Tối",
+            "theme_system": "Theo hệ thống",
+            "auto_launch": "Tự động khởi động",
+            "auto_launch_enabled": "Bật",
+            "auto_launch_disabled": "Tắt",
+            "auto_launch_desc": "Tự động chạy Antigravity Tools khi khởi động hệ thống"
+        },
+        "account": {
+            "title": "Cài đặt tài khoản",
+            "auto_refresh": "Tự động làm mới hạn ngạch",
+            "auto_refresh_desc": "Định kỳ tự động làm mới thông tin hạn ngạch của tất cả tài khoản",
+            "refresh_interval": "Khoảng thời gian làm mới (phút)",
+            "auto_sync": "Tự động đồng bộ tài khoản hiện tại",
+            "auto_sync_desc": "Định kỳ tự động đồng bộ thông tin tài khoản đang hoạt động",
+            "sync_interval": "Khoảng thời gian đồng bộ (giây)"
+        },
+        "advanced": {
+            "title": "Cài đặt nâng cao",
+            "export_path": "Đường dẫn xuất mặc định",
+            "export_path_placeholder": "Chưa thiết lập (Hỏi mỗi lần)",
+            "default_export_path_desc": "Sau khi thiết lập, tệp xuất sẽ được lưu trực tiếp vào thư mục này, không hiện hộp thoại chọn",
+            "select_btn": "Chọn",
+            "open_btn": "Mở",
+            "data_dir": "Thư mục dữ liệu",
+            "data_dir_desc": "Vị trí lưu trữ dữ liệu tài khoản và tệp cấu hình",
+            "antigravity_path": "Đường dẫn chương trình Antigravity",
+            "antigravity_path_placeholder": "Chưa thiết lập (Sẽ sử dụng tự động dò tìm)",
+            "antigravity_path_desc": "Nếu bạn cài đặt ứng dụng Antigravity ở vị trí không chuẩn, bạn có thể chỉ định thủ công đường dẫn tệp thực thi tại đây (MacOS trỏ đến thư mục .app).",
+            "antigravity_path_select": "Chọn tệp thực thi chương trình Antigravity",
+            "antigravity_path_detected": "Đã cập nhật đường dẫn được dò tìm",
+            "detect_btn": "Dò tìm",
+            "accounts_page_size": "Kích thước phân trang danh sách tài khoản",
+            "page_size_auto": "Tự động tính toán (Khuyên dùng)",
+            "page_size_desc": "Thiết lập số lượng tài khoản hiển thị trên mỗi trang. Chọn tự động tính toán sẽ điều chỉnh động dựa trên kích thước cửa sổ.",
+            "logs_title": "Bảo trì nhật ký",
+            "logs_desc": "Dọn dẹp các tệp bộ nhớ đệm nhật ký do ứng dụng tạo ra, không ảnh hưởng đến dữ liệu tài khoản.",
+            "clear_logs": "Dọn dẹp bộ nhớ đệm nhật ký",
+            "clear_logs_title": "Xác nhận dọn dẹp nhật ký",
+            "clear_logs_msg": "Bạn có chắc chắn muốn dọn dẹp tất cả các tệp bộ nhớ đệm nhật ký không?",
+            "logs_cleared": "Đã dọn dẹp bộ nhớ đệm nhật ký"
+        },
+        "about": {
+            "title": "Giới thiệu",
+            "version": "Phiên bản ứng dụng",
+            "tech_stack": "Ngăn xếp công nghệ",
+            "author": "Tác giả",
+            "wechat": "Tài khoản WeChat",
+            "github": "Địa chỉ mã nguồn mở",
+            "copyright": "Bản quyền © 2025 Antigravity. Bảo lưu mọi quyền.",
+            "check_update": "Kiểm tra cập nhật",
+            "checking_update": "Đang kiểm tra...",
+            "latest_version": "Đã là phiên bản mới nhất",
+            "new_version_available": "Phát hiện phiên bản mới {{version}}",
+            "download_update": "Đi tới tải xuống",
+            "update_check_failed": "Kiểm tra cập nhật thất bại"
+        }
+    },
+    "tray": {
+        "current": "Hiện tại",
+        "quota": "Hạn mức",
+        "switch_next": "Chuyển tài khoản tiếp theo",
+        "refresh_current": "Làm mới hạn mức tài khoản hiện tại",
+        "show_window": "Hiển thị cửa sổ chính",
+        "quit": "Thoát ứng dụng (Exit)",
+        "no_account": "Không có tài khoản",
+        "unknown_quota": "Không xác định (Nhấp để làm mới)",
+        "forbidden": "Tài khoản bị cấm"
+    },
+    "proxy": {
+        "title": "Dịch vụ API Proxy",
+        "status": {
+            "running": "Dịch vụ đang chạy",
+            "stopped": "Dịch vụ đã dừng",
+            "accounts_available": "{{count}} tài khoản khả dụng",
+            "processing": "Đang xử lý..."
+        },
+        "action": {
+            "start": "Khởi động dịch vụ",
+            "stop": "Dừng dịch vụ"
+        },
+        "config": {
+            "title": "Cấu hình dịch vụ",
+            "port": "Cổng lắng nghe",
+            "port_hint": "Mặc định 8045, sửa đổi cổng cần khởi động lại dịch vụ",
+            "auto_start": "Tự động khởi động cùng ứng dụng",
+            "api_key": "Khóa API",
+            "btn_regenerate": "Tạo lại khóa",
+            "btn_copy": "Sao chép",
+            "btn_copied": "Đã sao chép",
+            "warning_key": "Lưu ý: Vui lòng bảo quản kỹ khóa API của bạn, không tiết lộ cho người khác.",
+            "request_timeout": "Thời gian chờ yêu cầu",
+            "request_timeout_hint": "Mặc định 120 giây, phạm vi 30-600 giây. Sửa đổi cần khởi động lại dịch vụ để có hiệu lực.",
+            "upstream_proxy": {
+                "title": "Proxy thượng nguồn toàn cục (Global Proxy)",
+                "desc": "Sau khi bật, tất cả các yêu cầu bên ngoài trong ứng dụng (API Proxy, Làm mới Token, Truy vấn hạn ngạch, Kiểm tra cập nhật) đều sẽ đi qua proxy này.",
+                "enable": "Bật proxy thượng nguồn",
+                "url": "Địa chỉ proxy",
+                "url_placeholder": "Ví dụ: http://127.0.0.1:7890 hoặc socks5://127.0.0.1:7890",
+                "tip": "Hỗ trợ giao thức HTTP, HTTPS và SOCKS5."
+            }
+        },
+        "example": {
+            "title": "Ví dụ sử dụng",
+            "curl": "cURL",
+            "python": "Python"
+        },
+        "dialog": {
+            "confirm_regenerate": "Bạn có chắc chắn muốn tạo khóa API mới không? Khóa cũ sẽ mất hiệu lực ngay lập tức.",
+            "operate_failed": "Thao tác thất bại: {{error}}"
+        },
+        "model": {
+            "flash": "Phản hồi cực nhanh",
+            "flash_preview": "Xem trước cực nhanh",
+            "flash_lite": "Nhẹ & Nhanh",
+            "flash_thinking": "Khả năng tư duy",
+            "pro_legacy": "Phiên bản cổ điển",
+            "pro_low": "Hiệu suất tiêu chuẩn",
+            "pro_high": "Suy luận mạnh nhất",
+            "pro_image": "Tạo hình ảnh (1:1)",
+            "pro_image_16_9": "Tạo hình ảnh (16:9)",
+            "pro_image_9_16": "Tạo hình ảnh (9:16)",
+            "pro_image_4_3": "Tạo hình ảnh (4:3)",
+            "pro_image_3_4": "Tạo hình ảnh (3:4)",
+            "pro_image_1_1": "Tạo hình ảnh (1:1)",
+            "claude_sonnet": "Suy luận mã",
+            "claude_sonnet_thinking": "Chuỗi tư duy",
+            "claude_opus_thinking": "Tư duy mạnh nhất"
+        },
+        "mapping": {
+            "title": "Ánh xạ mô hình Claude Code",
+            "description": "Ánh xạ mô hình Claude Code sang mô hình Antigravity, định tuyến yêu cầu thông minh để tối ưu hóa chi phí và tốc độ.",
+            "default": "Mặc định",
+            "sonnet_desc": "Tác vụ phức tạp mạnh nhất",
+            "opus_desc": "Cấp cao cấp",
+            "haiku_desc": "Phản hồi cực nhanh",
+            "maps_to": "Ánh xạ tới Antigravity",
+            "apply_recommended": "Áp dụng cấu hình đề xuất",
+            "restore_defaults": "Khôi phục cấu hình mặc định",
+            "reset_all": "Đặt lại tất cả"
+        },
+        "models": {
+            "flash": "Phản hồi cực nhanh",
+            "flash_thinking": "Khả năng tư duy",
+            "pro_high": "Suy luận mạnh nhất",
+            "pro_low": "Hạn ngạch thấp",
+            "sonnet": "Suy luận mã",
+            "sonnet_thinking": "Chuỗi tư duy",
+            "opus_thinking": "Tư duy mạnh nhất"
+        },
+        "router": {
+            "title": "Trung tâm định tuyến mô hình (Model Router)",
+            "subtitle": "Định tuyến thống nhất mô hình OpenAI/Claude theo \"Gia tộc quy cách\", hoặc thêm \"Ánh xạ chính xác\" ưu tiên cao nhất.",
+            "original_id": "ID mô hình gốc",
+            "route_to": "Đích định tuyến",
+            "group_title": "Nhóm gia tộc mô hình (Series Groups)",
+            "groups": {
+                "claude_45": {
+                    "name": "Dòng Claude 4.5",
+                    "desc": "Opus 4.5, Sonnet 4.5 (Suy luận)"
+                },
+                "claude_35": {
+                    "name": "Dòng Claude 3.5",
+                    "desc": "Sonnet 3.5, Haiku 3.5"
+                },
+                "gpt_4": {
+                    "name": "Dòng GPT-4 / o1",
+                    "desc": "GPT-4, Turbo, o1-preview"
+                },
+                "gpt_4o": {
+                    "name": "Dòng GPT-4o / 3.5",
+                    "desc": "GPT-4o, Mini, 3.5 Turbo"
+                }
+            },
+            "expert_title": "Ánh xạ chính xác chuyên gia (Expert Custom Routing)",
+            "expert_subtitle": "Khớp chính xác ID mô hình gốc được truyền từ bất kỳ giao thức nào.",
+            "reset_confirm": "Bạn có chắc chắn muốn đặt lại tất cả ánh xạ mô hình về mặc định hệ thống không?",
+            "reset_mapping": "Đặt lại ánh xạ",
+            "add_mapping": "Thêm ánh xạ (Add Mapping)",
+            "current_list": "Danh sách ánh xạ hiện tại (Custom List)",
+            "no_custom_mapping": "Chưa có ánh xạ chính xác tùy chỉnh"
+        },
+        "examples": {
+            "title": "Ví dụ sử dụng"
+        },
+        "multi_protocol": {
+            "title": "Hỗ trợ đa giao thức (Multi-Protocol Support)",
+            "subtitle": "Hỗ trợ giao thức",
+            "description": "Dịch vụ Proxy hỗ trợ hai định dạng API OpenAI và Anthropic, đáp ứng nhu cầu công cụ khác nhau",
+            "openai_label": "Giao thức OpenAI",
+            "anthropic_label": "Giao thức Anthropic",
+            "openai_tools": "Cherry Studio, NextChat",
+            "anthropic_tools": "Claude Code CLI",
+            "gemini_label": "Giao thức Gemini",
+            "gemini_tools": "Google AI SDK, LangChain",
+            "quick_integration": "Tích hợp nhanh (Quick Integration)",
+            "click_tip": "👆 Nhấp vào bất kỳ mô hình nào bên trái để cập nhật mã"
+        },
+        "supported_models": {
+            "title": "Mô hình hỗ trợ và tích hợp (Supported Models & Integration)",
+            "model_name": "Tên mô hình",
+            "model_id": "ID mô hình",
+            "description": "Mô tả",
+            "action": "Thao tác"
+        }
+    }
+}
