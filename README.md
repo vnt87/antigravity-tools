@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-3.2.8-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-3.3.0-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -204,6 +204,20 @@ print(response.choices[0].message.content)
 ## 📝 Nhà phát triển và Cộng đồng
 
 *   **Nhật ký thay đổi (Changelog)**:
+    *   **v3.3.0 (2025-12-27)**:
+        - **Cập nhật quan trọng (Major Updates)**:
+            - **Thích ứng sâu Codex CLI & Claude CLI (Cảm ơn nòng cốt @llsenyue PR #93)**: 
+                - **Tương thích hoàn toàn Coding Agent**: Thực hiện hỗ trợ hoàn hảo cho Codex CLI, bao gồm thích ứng sâu điểm cuối `/v1/responses` và chuyển đổi thông minh lệnh gọi công cụ shell (SSOP).
+                - **Tăng cường suy luận Claude CLI**: Giới thiệu lưu trữ và điền lại `thoughtSignature` toàn cầu, giải quyết triệt để lỗi xác minh chữ ký khi Claude CLI sử dụng các mô hình dòng Gemini 3.
+            - **Tái cấu trúc ngăn xếp giao thức OpenAI**:
+                - **Thêm giao diện Completions**: Hỗ trợ đầy đủ định tuyến `/v1/completions` và `/v1/responses`, tương thích với nhiều ứng dụng khách OpenAI truyền thống hơn.
+                - **Hợp nhất đa phương thức và làm sạch Schema**: Tích hợp thành công logic phân tích hình ảnh hiệu suất cao tự phát triển và chiến lược lọc JSON Schema độ chính xác cao do cộng đồng đóng góp.
+            - **Kiểm soát ràng buộc mạng ưu tiên quyền riêng tư (Cảm ơn nòng cốt @kiookp PR #91)**:
+                - **Mặc định Loopback cục bộ**: Máy chủ proxy ngược mặc định lắng nghe `127.0.0.1`, chỉ cho phép truy cập cục bộ, đảm bảo an toàn quyền riêng tư.
+                - **Truy cập LAN tùy chọn**: Thêm công tắc cấu hình `allow_lan_access`, sau khi bật sẽ lắng nghe `0.0.0.0` để cho phép thiết bị trong mạng LAN truy cập.
+                - **Cảnh báo bảo mật**: Giao diện người dùng cung cấp cảnh báo bảo mật và trạng thái rõ ràng.
+        - **Nâng cấp trải nghiệm Frontend**: 
+            - **Trực quan hóa điểm cuối đa giao thức**: Thêm hiển thị chi tiết điểm cuối trong trang Proxy API, hỗ trợ sao chép nhanh độc lập cho các điểm cuối Chat/Completions/Responses khác nhau.
     *   **v3.2.8 (2025-12-26)**:
         - **Sửa lỗi (Bug Fixes)**:
             - **Hỗ trợ đa phương thức và mô hình hình ảnh giao thức OpenAI**: Đã sửa hoàn toàn lỗi 400 do định dạng `content` không khớp khi gửi yêu cầu hình ảnh đến mô hình thị giác (như `gemini-3-pro-image`) theo giao thức OpenAI.

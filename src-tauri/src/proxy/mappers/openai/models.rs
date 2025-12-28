@@ -6,7 +6,10 @@ use serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAIRequest {
     pub model: String,
+    #[serde(default)]
     pub messages: Vec<OpenAIMessage>,
+    #[serde(default)]
+    pub prompt: Option<String>,
     #[serde(default)]
     pub stream: bool,
     #[serde(rename = "max_tokens")]
@@ -16,8 +19,15 @@ pub struct OpenAIRequest {
     pub top_p: Option<f32>,
     pub stop: Option<Value>,
     pub response_format: Option<ResponseFormat>,
+    #[serde(default)]
     pub tools: Option<Vec<Value>>,
+    #[serde(rename = "tool_choice")]
     pub tool_choice: Option<Value>,
+    #[serde(rename = "parallel_tool_calls")]
+    pub parallel_tool_calls: Option<bool>,
+    // Codex proprietary fields
+    pub instructions: Option<String>,
+    pub input: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +71,8 @@ pub struct OpenAIMessage {
     pub tool_calls: Option<Vec<ToolCall>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_call_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

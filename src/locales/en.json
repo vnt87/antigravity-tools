@@ -258,6 +258,11 @@
             "port": "Listen Port",
             "port_hint": "Default 8045, restart required to apply changes",
             "auto_start": "Auto Start with App",
+            "allow_lan_access": "Allow LAN Access",
+            "allow_lan_access_hint_enabled": "🌐 Listening on 0.0.0.0, LAN devices can access",
+            "allow_lan_access_hint_disabled": "🔒 Listening on 127.0.0.1 only, localhost access (Privacy First)",
+            "allow_lan_access_warning": "⚠️ LAN devices can access when enabled. Keep your API key secure",
+            "allow_lan_access_restart_hint": "ℹ️ Service restart required to apply changes",
             "api_key": "API Key",
             "btn_regenerate": "Regenerate Key",
             "btn_copy": "Copy",
@@ -342,6 +347,10 @@
                 "gpt_4o": {
                     "name": "GPT-4o / 3.5 Series",
                     "desc": "GPT-4o, Mini, 3.5 Turbo"
+                },
+                "gpt_5": {
+                    "name": "GPT-5 Series",
+                    "desc": "GPT-5.1, GPT-5.2 xhigh"
                 }
             },
             "expert_title": "Expert Custom Routing",
@@ -351,6 +360,8 @@
             "add_mapping": "Add Mapping",
             "current_list": "Custom List",
             "no_custom_mapping": "No custom mappings yet",
+            "gemini3_only_warning": "⚠️ Gemini 3 series only",
+            "default_suffix": " (Default)",
             "original_id": "Original ID",
             "route_to": "Route To"
         },

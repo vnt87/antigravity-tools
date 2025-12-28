@@ -259,6 +259,11 @@
             "port": "监听端口",
             "port_hint": "默认 8045，修改端口需重启服务",
             "auto_start": "跟随应用自动启动",
+            "allow_lan_access": "允许局域网访问",
+            "allow_lan_access_hint_enabled": "🌐 监听 0.0.0.0，局域网设备可访问",
+            "allow_lan_access_hint_disabled": "🔒 仅监听 127.0.0.1，仅本机可访问（隐私优先）",
+            "allow_lan_access_warning": "⚠️ 开启后局域网内其他设备可访问，请确保 API 密钥安全",
+            "allow_lan_access_restart_hint": "ℹ️ 需要重启服务后生效",
             "api_key": "API 密钥",
             "btn_regenerate": "重新生成密钥",
             "btn_copy": "复制",
@@ -345,6 +350,10 @@
                 "gpt_4o": {
                     "name": "GPT-4o / 3.5 系列",
                     "desc": "GPT-4o, Mini, 3.5 Turbo"
+                },
+                "gpt_5": {
+                    "name": "GPT-5 系列",
+                    "desc": "GPT-5.1, GPT-5.2 xhigh"
                 }
             },
             "expert_title": "专家精确映射 (Expert Custom Routing)",
@@ -353,7 +362,9 @@
             "reset_mapping": "重置映射",
             "add_mapping": "添加映射 (Add Mapping)",
             "current_list": "当前映射列表 (Custom List)",
-            "no_custom_mapping": "暂无自定义精确映射"
+            "no_custom_mapping": "暂无自定义精确映射",
+            "gemini3_only_warning": "⚠️ 仅支持 Gemini 3 系列",
+            "default_suffix": "（默认）"
         },
         "examples": {
             "title": "使用示例"

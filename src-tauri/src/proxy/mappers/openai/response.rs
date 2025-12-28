@@ -1,7 +1,5 @@
 use super::models::*;
 use serde_json::Value;
-// use chrono::Utc;
-// use uuid::Uuid;
 
 pub fn transform_openai_response(gemini_response: &Value) -> OpenAIResponse {
     // 解包 response 字段
@@ -50,7 +48,7 @@ pub fn transform_openai_response(gemini_response: &Value) -> OpenAIResponse {
                 });
             }
             
-            // 图片处理 (保持现有逻辑)
+            // 图片处理
             if let Some(img) = part.get("inlineData") {
                 let mime_type = img.get("mimeType").and_then(|v| v.as_str()).unwrap_or("image/png");
                 let data = img.get("data").and_then(|v| v.as_str()).unwrap_or("");
@@ -61,7 +59,7 @@ pub fn transform_openai_response(gemini_response: &Value) -> OpenAIResponse {
         }
     }
 
-    // 提取 finish_reason (增加更多映射)
+    // 提取 finish_reason
     let finish_reason = raw
         .get("candidates")
         .and_then(|c| c.get(0))
@@ -88,6 +86,7 @@ pub fn transform_openai_response(gemini_response: &Value) -> OpenAIResponse {
                 content: if content_out.is_empty() { None } else { Some(OpenAIContent::String(content_out)) },
                 tool_calls: if tool_calls.is_empty() { None } else { Some(tool_calls) },
                 tool_call_id: None,
+                name: None,
             },
             finish_reason: Some(finish_reason.to_string()),
         }],
@@ -114,7 +113,12 @@ mod tests {
 
         let result = transform_openai_response(&gemini_resp);
         assert_eq!(result.object, "chat.completion");
-        assert_eq!(result.choices[0].message.content, Some(OpenAIContent::String("Hello!".to_string())));
+        
+        let content = match result.choices[0].message.content.as_ref().unwrap() {
+            OpenAIContent::String(s) => s,
+            _ => panic!("Expected string content"),
+        };
+        assert_eq!(content, "Hello!");
         assert_eq!(result.choices[0].finish_reason, Some("stop".to_string()));
     }
 }
