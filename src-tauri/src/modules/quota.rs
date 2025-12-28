@@ -1,7 +1,7 @@
+use crate::models::QuotaData;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use crate::models::QuotaData;
 
 const QUOTA_API_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
 const LOAD_PROJECT_API_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
@@ -32,12 +32,12 @@ struct LoadProjectResponse {
     project_id: Option<String>,
 }
 
-/// 创建配置好的 HTTP Client
+/// Create a configured HTTP Client
 fn create_client() -> reqwest::Client {
     crate::utils::http::create_client(15)
 }
 
-/// 获取 Project ID
+/// Get Project ID
 async fn fetch_project_id(access_token: &str) -> Option<String> {
     let client = create_client();
     let body = json!({
@@ -46,7 +46,7 @@ async fn fetch_project_id(access_token: &str) -> Option<String> {
         }
     });
 
-    // 简单的重试
+    // Simple retry
     for _ in 0..2 {
         match client
             .post(LOAD_PROJECT_API_URL)
@@ -54,7 +54,7 @@ async fn fetch_project_id(access_token: &str) -> Option<String> {
             .header("User-Agent", USER_AGENT)
             .json(&body)
             .send()
-            .await 
+            .await
         {
             Ok(res) => {
                 if res.status().is_success() {
@@ -71,33 +71,35 @@ async fn fetch_project_id(access_token: &str) -> Option<String> {
         }
     }
 
-    // 如果获取失败，使用内置的随机生成逻辑作为兜底
+    // If fetching fails, use built-in random generation logic as a fallback
     let mock_id = crate::proxy::project_resolver::generate_mock_project_id();
-    crate::modules::logger::log_warn(&format!("账号无资格获取官方 cloudaicompanionProject，配额查询将使用随机生成的 Project ID 作为兜底: {}", mock_id));
+    crate::modules::logger::log_warn(&format!("Account is not eligible for official cloudaicompanionProject, quota query will use randomly generated Project ID as fallback: {}", mock_id));
     Some(mock_id)
 }
 
-/// 查询账号配额
-pub async fn fetch_quota(access_token: &str) -> crate::error::AppResult<(QuotaData, Option<String>)> {
+/// Query account quota
+pub async fn fetch_quota(
+    access_token: &str,
+) -> crate::error::AppResult<(QuotaData, Option<String>)> {
     use crate::error::AppError;
-    crate::modules::logger::log_info("开始外部查询配额...");
+    crate::modules::logger::log_info("Starting external quota query...");
     let client = create_client();
-    
-    // 1. 获取 Project ID
+
+    // 1. Get Project ID
     let project_id = fetch_project_id(access_token).await;
-    crate::modules::logger::log_info(&format!("Project ID 获取结果: {:?}", project_id));
-    
-    // 2. 构建请求体
+    crate::modules::logger::log_info(&format!("Project ID fetch result: {:?}", project_id));
+
+    // 2. Build request body
     let mut payload = serde_json::Map::new();
     if let Some(ref pid) = project_id {
         payload.insert("project".to_string(), json!(pid));
     }
-    
+
     let url = QUOTA_API_URL;
     let max_retries = 3;
     let mut last_error: Option<AppError> = None;
 
-    crate::modules::logger::log_info(&format!("发送配额请求至 {}", url));
+    crate::modules::logger::log_info(&format!("Sending quota request to {}", url));
 
     for attempt in 1..=max_retries {
         match client
@@ -109,62 +111,73 @@ pub async fn fetch_quota(access_token: &str) -> crate::error::AppResult<(QuotaDa
             .await
         {
             Ok(response) => {
-                // 将 HTTP 错误状态转换为 AppError
+                // Convert HTTP error status to AppError
                 if let Err(_) = response.error_for_status_ref() {
                     let status = response.status();
-                    
-                    // ✅ 特殊处理 403 Forbidden - 直接返回,不重试
+
+                    // ✅ Special handling for 403 Forbidden - return directly, do not retry
                     if status == reqwest::StatusCode::FORBIDDEN {
                         crate::modules::logger::log_warn(&format!(
-                            "账号无权限 (403 Forbidden),标记为 forbidden 状态"
+                            "Account has no permission (403 Forbidden), marking as forbidden status"
                         ));
                         let mut q = QuotaData::new();
                         q.is_forbidden = true;
                         return Ok((q, project_id));
                     }
-                    
-                    // 其他错误继续重试逻辑
+
+                    // Continue retry logic for other errors
                     if attempt < max_retries {
-                         let text = response.text().await.unwrap_or_default();
-                         crate::modules::logger::log_warn(&format!("API 错误: {} - {} (尝试 {}/{})", status, text, attempt, max_retries));
-                         last_error = Some(AppError::Unknown(format!("HTTP {} - {}", status, text)));
-                         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                         continue;
+                        let text = response.text().await.unwrap_or_default();
+                        crate::modules::logger::log_warn(&format!(
+                            "API Error: {} - {} (Attempt {}/{})",
+                            status, text, attempt, max_retries
+                        ));
+                        last_error = Some(AppError::Unknown(format!("HTTP {} - {}", status, text)));
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                        continue;
                     } else {
-                         let text = response.text().await.unwrap_or_default();
-                         return Err(AppError::Unknown(format!("API 错误: {} - {}", status, text)));
+                        let text = response.text().await.unwrap_or_default();
+                        return Err(AppError::Unknown(format!(
+                            "API Error: {} - {}",
+                            status, text
+                        )));
                     }
                 }
 
-                let quota_response: QuotaResponse = response
-                    .json()
-                    .await
-                    .map_err(|e| AppError::Network(e))?;
-                
+                let quota_response: QuotaResponse =
+                    response.json().await.map_err(|e| AppError::Network(e))?;
+
                 let mut quota_data = QuotaData::new();
-                
-                crate::modules::logger::log_info(&format!("Quota API 返回了 {} 个模型:", quota_response.models.len()));
+
+                crate::modules::logger::log_info(&format!(
+                    "Quota API returned {} models:",
+                    quota_response.models.len()
+                ));
 
                 for (name, info) in quota_response.models {
                     crate::modules::logger::log_info(&format!("   - {}", name));
                     if let Some(quota_info) = info.quota_info {
-                        let percentage = quota_info.remaining_fraction
+                        let percentage = quota_info
+                            .remaining_fraction
                             .map(|f| (f * 100.0) as i32)
                             .unwrap_or(0);
-                        
+
                         let reset_time = quota_info.reset_time.unwrap_or_default();
-                        
-                        // 只保存我们关心的模型
+
+                        // Only save models we care about
                         if name.contains("gemini") || name.contains("claude") {
                             quota_data.add_model(name, percentage, reset_time);
                         }
                     }
                 }
-                
+
                 return Ok((quota_data, project_id));
-            },
+            }
             Err(e) => {
-                crate::modules::logger::log_warn(&format!("请求失败: {} (尝试 {}/{})", e, attempt, max_retries));
+                crate::modules::logger::log_warn(&format!(
+                    "Request failed: {} (Attempt {}/{})",
+                    e, attempt, max_retries
+                ));
                 last_error = Some(AppError::Network(e));
                 if attempt < max_retries {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -172,19 +185,21 @@ pub async fn fetch_quota(access_token: &str) -> crate::error::AppResult<(QuotaDa
             }
         }
     }
-    
-    Err(last_error.unwrap_or_else(|| AppError::Unknown("配额查询失败".to_string())))
+
+    Err(last_error.unwrap_or_else(|| AppError::Unknown("Quota query failed".to_string())))
 }
 
-/// 批量查询所有账号配额 (备用功能)
+/// Batch query all account quotas (fallback function)
 #[allow(dead_code)]
-pub async fn fetch_all_quotas(accounts: Vec<(String, String)>) -> Vec<(String, crate::error::AppResult<QuotaData>)> {
+pub async fn fetch_all_quotas(
+    accounts: Vec<(String, String)>,
+) -> Vec<(String, crate::error::AppResult<QuotaData>)> {
     let mut results = Vec::new();
-    
+
     for (account_id, access_token) in accounts {
         let result = fetch_quota(&access_token).await.map(|(q, _)| q);
         results.push((account_id, result));
     }
-    
+
     results
 }

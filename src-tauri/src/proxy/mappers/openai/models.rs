@@ -1,4 +1,4 @@
-// OpenAI 数据模型
+// OpenAI Data Models
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -46,13 +46,9 @@ pub enum OpenAIContent {
 #[serde(tag = "type")]
 pub enum OpenAIContentBlock {
     #[serde(rename = "text")]
-    Text {
-        text: String,
-    },
+    Text { text: String },
     #[serde(rename = "image_url")]
-    ImageUrl {
-        image_url: OpenAIImageUrl,
-    },
+    ImageUrl { image_url: OpenAIImageUrl },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

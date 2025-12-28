@@ -1,11 +1,11 @@
-// 上游客户端实现
-// 基于高性能通讯接口封装
+// Upstream client implementation
+// Encapsulation based on high-performance communication interface
 
 use reqwest::{header, Client, Response};
 use serde_json::Value;
 use tokio::time::Duration;
 
-// 生产环境端点
+// Production environment endpoint
 const V1_INTERNAL_BASE_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal";
 
 pub struct UpstreamClient {
@@ -32,9 +32,9 @@ impl UpstreamClient {
         Self { http_client }
     }
 
-    /// 构建 v1internal URL
-    /// 
-    /// 构建 API 请求地址
+    /// Build v1internal URL
+    ///
+    /// Build API request address
     fn build_url(method: &str, query_string: Option<&str>) -> String {
         if let Some(qs) = query_string {
             format!("{}:{}?{}", V1_INTERNAL_BASE_URL, method, qs)
@@ -43,9 +43,9 @@ impl UpstreamClient {
         }
     }
 
-    /// 调用 v1internal API（基础方法）
-    /// 
-    /// 发起基础网络请求
+    /// Call v1internal API (basic method)
+    ///
+    /// Initiate basic network request
     pub async fn call_v1_internal(
         &self,
         method: &str,
@@ -55,14 +55,24 @@ impl UpstreamClient {
     ) -> Result<Response, String> {
         let url = Self::build_url(method, query_string);
 
-        // 构建 Headers
+        // Build Headers
         let mut headers = header::HeaderMap::new();
-        headers.insert(header::CONTENT_TYPE, header::HeaderValue::from_static("application/json"));
-        headers.insert(header::AUTHORIZATION, header::HeaderValue::from_str(&format!("Bearer {}", access_token)).map_err(|e| e.to_string())?);
-        // 设置自定义 User-Agent
-        headers.insert(header::USER_AGENT, header::HeaderValue::from_static("antigravity/1.11.9 windows/amd64"));
+        headers.insert(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json"),
+        );
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_str(&format!("Bearer {}", access_token))
+                .map_err(|e| e.to_string())?,
+        );
+        // Set custom User-Agent
+        headers.insert(
+            header::USER_AGENT,
+            header::HeaderValue::from_static("antigravity/1.11.9 windows/amd64"),
+        );
 
-        // 记录请求详情以便调试 404
+        // Record request details for debugging 404
         let response = self
             .http_client
             .post(&url)
@@ -75,37 +85,48 @@ impl UpstreamClient {
         Ok(response)
     }
 
-    /// 调用 v1internal API（带 429 重试,支持闭包）
-    /// 
-    /// 带容错和重试的核心请求逻辑
-    /// 
+    /// Call v1internal API (with 429 retry, supports closure)
+    ///
+    /// Core request logic with fault tolerance and retry
+    ///
     /// # Arguments
     /// * `method` - API method (e.g., "generateContent")
     /// * `query_string` - Optional query string (e.g., "?alt=sse")
-    /// * `get_credentials` - 闭包，获取凭证（支持账号轮换）
-    /// * `build_body` - 闭包，接收 project_id 构建请求体
-    /// * `max_attempts` - 最大重试次数
-    /// 
+    /// * `get_credentials` - Closure, get credentials (supports account rotation)
+    /// * `build_body` - Closure, receive project_id to build request body
+    /// * `max_attempts` - Maximum retry attempts
+    ///
     /// # Returns
     /// HTTP Response
-    // 已移除弃用的重试方法 (call_v1_internal_with_retry)
+    // Removed deprecated retry method (call_v1_internal_with_retry)
 
-    // 已移除弃用的辅助方法 (parse_retry_delay)
+    // Removed deprecated helper method (parse_retry_delay)
 
-    // 已移除弃用的辅助方法 (parse_duration_ms)
+    // Removed deprecated helper method (parse_duration_ms)
 
-    /// 获取可用模型列表
-    /// 
-    /// 获取远端模型列表
+    /// Get available model list
+    ///
+    /// Get remote model list
     pub async fn fetch_available_models(&self, access_token: &str) -> Result<Value, String> {
         let url = Self::build_url("fetchAvailableModels", None);
 
         let mut headers = header::HeaderMap::new();
-        headers.insert(header::CONTENT_TYPE, header::HeaderValue::from_static("application/json"));
-        headers.insert(header::AUTHORIZATION, header::HeaderValue::from_str(&format!("Bearer {}", access_token)).map_err(|e| e.to_string())?);
-        headers.insert(header::USER_AGENT, header::HeaderValue::from_static("antigravity/1.11.9 windows/amd64"));
+        headers.insert(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json"),
+        );
+        headers.insert(
+            header::AUTHORIZATION,
+            header::HeaderValue::from_str(&format!("Bearer {}", access_token))
+                .map_err(|e| e.to_string())?,
+        );
+        headers.insert(
+            header::USER_AGENT,
+            header::HeaderValue::from_static("antigravity/1.11.9 windows/amd64"),
+        );
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .headers(headers)
             .json(&serde_json::json!({}))
@@ -114,10 +135,13 @@ impl UpstreamClient {
             .map_err(|e| format!("Request failed: {}", e))?;
 
         if !response.status().is_success() {
-             return Err(format!("Upstream error: {}", response.status()));
+            return Err(format!("Upstream error: {}", response.status()));
         }
 
-        let json: Value = response.json().await.map_err(|e| format!("Parse json failed: {}", e))?;
+        let json: Value = response
+            .json()
+            .await
+            .map_err(|e| format!("Parse json failed: {}", e))?;
         Ok(json)
     }
 }
@@ -140,5 +164,4 @@ mod tests {
             "https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse"
         );
     }
-
 }

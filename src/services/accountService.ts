@@ -1,12 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Account, QuotaData } from '../types/account';
 
-// 检查 Tauri 环境
+// Check Tauri environment
 function ensureTauriEnvironment() {
-    // 只检查 invoke 函数是否可用
-    // 不检查 __TAURI__ 对象,因为在某些 Tauri 版本中可能不存在
+    // Only check if invoke function is available
+    // Do not check __TAURI__ object, as it may not exist in some Tauri versions
     if (typeof invoke !== 'function') {
-        throw new Error('Tauri API 未正确加载,请重启应用');
+        throw new Error('Tauri API not loaded correctly, please restart the app');
     }
 }
 
@@ -56,14 +56,14 @@ export async function startOAuthLogin(): Promise<Account> {
     try {
         return await invoke('start_oauth_login');
     } catch (error) {
-        // 增强错误信息
+        // Enhance error message
         if (typeof error === 'string') {
-            // 如果是 refresh_token 缺失错误,保持原样(已包含详细说明)
+            // If it is a missing refresh_token error, keep it as is (already contains detailed explanation)
             if (error.includes('Refresh Token') || error.includes('refresh_token')) {
                 throw error;
             }
-            // 其他错误添加上下文
-            throw `OAuth 授权失败: ${error}`;
+            // Add context for other errors
+            throw `OAuth authorization failed: ${error}`;
         }
         throw error;
     }
@@ -78,7 +78,7 @@ export async function completeOAuthLogin(): Promise<Account> {
             if (error.includes('Refresh Token') || error.includes('refresh_token')) {
                 throw error;
             }
-            throw `OAuth 授权失败: ${error}`;
+            throw `OAuth authorization failed: ${error}`;
         }
         throw error;
     }
@@ -89,7 +89,7 @@ export async function cancelOAuthLogin(): Promise<void> {
     return await invoke('cancel_oauth_login');
 }
 
-// 导入
+// Import
 export async function importV1Accounts(): Promise<Account[]> {
     return await invoke('import_v1_accounts');
 }

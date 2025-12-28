@@ -1,4 +1,4 @@
-// API Key 认证中间件
+// API Key authentication middleware
 use axum::{
     extract::Request,
     http::{header, StatusCode},
@@ -6,12 +6,12 @@ use axum::{
     response::Response,
 };
 
-/// API Key 认证中间件
+/// API Key authentication middleware
 pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, StatusCode> {
     // Log the request method and URI
     tracing::info!("Request: {} {}", request.method(), request.uri());
-    
-    // 从 header 中提取 API key
+
+    // Extract API key from header
     let api_key = request
         .headers()
         .get(header::AUTHORIZATION)
@@ -24,8 +24,8 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
                 .and_then(|h| h.to_str().ok())
         });
 
-    // TODO: 实际验证 API key
-    // 目前暂时允许所有请求通过
+    // TODO: Actually verify API key
+    // Currently allow all requests to pass
     if api_key.is_some() || true {
         Ok(next.run(request).await)
     } else {
@@ -35,7 +35,7 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
 
 #[cfg(test)]
 mod tests {
-    // 移除未使用的 use super::*;
+    // Remove unused use super::*;
 
     #[test]
     fn test_auth_placeholder() {

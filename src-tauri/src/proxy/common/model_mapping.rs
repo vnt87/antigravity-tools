@@ -1,16 +1,16 @@
-// 模型名称映射
-use std::collections::HashMap;
+// Model Name Mapping
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 
 static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut m = HashMap::new();
 
-    // 直接支持的模型
+    // Directly supported models
     m.insert("claude-opus-4-5-thinking", "claude-opus-4-5-thinking");
     m.insert("claude-sonnet-4-5", "claude-sonnet-4-5");
     m.insert("claude-sonnet-4-5-thinking", "claude-sonnet-4-5-thinking");
 
-    // 别名映射
+    // Alias mapping
     m.insert("claude-sonnet-4-5-20250929", "claude-sonnet-4-5-thinking");
     m.insert("claude-3-5-sonnet-20241022", "claude-sonnet-4-5");
     m.insert("claude-3-5-sonnet-20240620", "claude-sonnet-4-5");
@@ -19,7 +19,7 @@ static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|
     m.insert("claude-haiku-4", "claude-sonnet-4-5");
     m.insert("claude-3-haiku-20240307", "claude-sonnet-4-5");
     m.insert("claude-haiku-4-5-20251001", "claude-sonnet-4-5");
-    // OpenAI 协议映射表
+    // OpenAI protocol mapping table
     m.insert("gpt-4", "gemini-2.5-pro");
     m.insert("gpt-4-turbo", "gemini-2.5-pro");
     m.insert("gpt-4-turbo-preview", "gemini-2.5-pro");
@@ -40,7 +40,7 @@ static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|
     m.insert("gpt-3.5-turbo-1106", "gemini-2.5-flash");
     m.insert("gpt-3.5-turbo-0613", "gemini-2.5-flash");
 
-    // Gemini 协议映射表
+    // Gemini protocol mapping table
     m.insert("gemini-2.5-flash-lite", "gemini-2.5-flash-lite");
     m.insert("gemini-2.5-flash-thinking", "gemini-2.5-flash-thinking");
     m.insert("gemini-3-pro-low", "gemini-3-pro-low");
@@ -68,54 +68,79 @@ pub fn map_claude_model_to_gemini(input: &str) -> String {
     "claude-sonnet-4-5".to_string()
 }
 
-/// 核心模型路由解析引擎
-/// 优先级：Custom Mapping (精确) > Group Mapping (家族) > System Mapping (内置插件)
+/// Core model routing resolution engine
+/// Priority: Custom Mapping (Exact) > Group Mapping (Family) > System Mapping (Built-in Plugin)
 pub fn resolve_model_route(
     original_model: &str,
     custom_mapping: &std::collections::HashMap<String, String>,
     openai_mapping: &std::collections::HashMap<String, String>,
     anthropic_mapping: &std::collections::HashMap<String, String>,
 ) -> String {
-    // 1. 检查自定义精确映射 (优先级最高)
+    // 1. Check custom exact mapping (highest priority)
     if let Some(target) = custom_mapping.get(original_model) {
-        crate::modules::logger::log_info(&format!("[Router] 使用自定义精确映射: {} -> {}", original_model, target));
+        crate::modules::logger::log_info(&format!(
+            "[Router] Using custom exact mapping: {} -> {}",
+            original_model, target
+        ));
         return target.clone();
     }
 
     let lower_model = original_model.to_lowercase();
 
-    // 2. 检查家族分组映射 (OpenAI 系)
-    // GPT-4 系列 (含 GPT-4 经典, o1, o3 等, 排除 4o/mini/turbo)
-    if (lower_model.starts_with("gpt-4") && !lower_model.contains("o") && !lower_model.contains("mini") && !lower_model.contains("turbo")) || 
-       lower_model.starts_with("o1-") || lower_model.starts_with("o3-") || lower_model == "gpt-4" {
+    // 2. Check family group mapping (OpenAI series)
+    // GPT-4 Series (including GPT-4 classic, o1, o3 etc, excluding 4o/mini/turbo)
+    if (lower_model.starts_with("gpt-4")
+        && !lower_model.contains("o")
+        && !lower_model.contains("mini")
+        && !lower_model.contains("turbo"))
+        || lower_model.starts_with("o1-")
+        || lower_model.starts_with("o3-")
+        || lower_model == "gpt-4"
+    {
         if let Some(target) = openai_mapping.get("gpt-4-series") {
-            crate::modules::logger::log_info(&format!("[Router] 使用 GPT-4 系列映射: {} -> {}", original_model, target));
+            crate::modules::logger::log_info(&format!(
+                "[Router] Using GPT-4 series mapping: {} -> {}",
+                original_model, target
+            ));
             return target.clone();
         }
     }
-    
-    // GPT-4o / 3.5 系列 (均衡与轻量, 含 4o, mini, turbo)
-    if lower_model.contains("4o") || lower_model.starts_with("gpt-3.5") || (lower_model.contains("mini") && !lower_model.contains("gemini")) || lower_model.contains("turbo") {
+
+    // GPT-4o / 3.5 Series (Balanced & Lightweight, including 4o, mini, turbo)
+    if lower_model.contains("4o")
+        || lower_model.starts_with("gpt-3.5")
+        || (lower_model.contains("mini") && !lower_model.contains("gemini"))
+        || lower_model.contains("turbo")
+    {
         if let Some(target) = openai_mapping.get("gpt-4o-series") {
-            crate::modules::logger::log_info(&format!("[Router] 使用 GPT-4o/3.5 系列映射: {} -> {}", original_model, target));
+            crate::modules::logger::log_info(&format!(
+                "[Router] Using GPT-4o/3.5 series mapping: {} -> {}",
+                original_model, target
+            ));
             return target.clone();
         }
     }
 
-    // GPT-5 系列 (gpt-5, gpt-5.1, gpt-5.2 等)
+    // GPT-5 Series (gpt-5, gpt-5.1, gpt-5.2 etc)
     if lower_model.starts_with("gpt-5") {
-        // 优先使用 gpt-5-series 映射，如果没有则使用 gpt-4-series
+        // Prefer gpt-5-series mapping, fallback to gpt-4-series if not present
         if let Some(target) = openai_mapping.get("gpt-5-series") {
-            crate::modules::logger::log_info(&format!("[Router] 使用 GPT-5 系列映射: {} -> {}", original_model, target));
+            crate::modules::logger::log_info(&format!(
+                "[Router] Using GPT-5 series mapping: {} -> {}",
+                original_model, target
+            ));
             return target.clone();
         }
         if let Some(target) = openai_mapping.get("gpt-4-series") {
-            crate::modules::logger::log_info(&format!("[Router] 使用 GPT-4 系列映射 (GPT-5 fallback): {} -> {}", original_model, target));
+            crate::modules::logger::log_info(&format!(
+                "[Router] Using GPT-4 series mapping (GPT-5 fallback): {} -> {}",
+                original_model, target
+            ));
             return target.clone();
         }
     }
 
-    // 3. 检查家族分组映射 (Anthropic 系)
+    // 3. Check family group mapping (Anthropic series)
     if lower_model.starts_with("claude-") {
         let family_key = if lower_model.contains("4-5") || lower_model.contains("4.5") {
             "claude-4.5-series"
@@ -126,17 +151,20 @@ pub fn resolve_model_route(
         };
 
         if let Some(target) = anthropic_mapping.get(family_key) {
-            crate::modules::logger::log_warn(&format!("[Router] 使用 Anthropic 系列映射: {} -> {}", original_model, target));
+            crate::modules::logger::log_warn(&format!(
+                "[Router] Using Anthropic series mapping: {} -> {}",
+                original_model, target
+            ));
             return target.clone();
         }
-        
-        // 兜底兼容旧版精确映射
+
+        // Fallback compatibility for legacy exact mapping
         if let Some(target) = anthropic_mapping.get(original_model) {
-             return target.clone();
+            return target.clone();
         }
     }
 
-    // 4. 下沉到系统默认映射逻辑
+    // 4. Fallback to system default mapping logic
     map_claude_model_to_gemini(original_model)
 }
 

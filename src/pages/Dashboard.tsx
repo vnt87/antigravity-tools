@@ -30,7 +30,7 @@ function Dashboard() {
         fetchCurrentAccount();
     }, []);
 
-    // 计算统计数据
+    // Calculate statistics
     const stats = useMemo(() => {
         const geminiQuotas = accounts
             .map(a => a.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-pro-high')?.percentage || 0)
@@ -87,7 +87,7 @@ function Dashboard() {
 
     const handleAddAccount = async (email: string, refreshToken: string) => {
         await addAccount(email, refreshToken);
-        await fetchAccounts(); // 刷新列表
+        await fetchAccounts(); // Refresh list
     };
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -98,7 +98,7 @@ function Dashboard() {
         setIsRefreshing(true);
         try {
             await refreshQuota(currentAccount.id);
-            // 刷新成功后重新获取最新数据
+            // Re-fetch latest data after successful refresh
             await fetchCurrentAccount();
             showToast(t('dashboard.toast.refresh_success'), 'success');
         } catch (error) {
@@ -153,7 +153,7 @@ function Dashboard() {
                 onMouseMove={() => console.log('Mouse moving over Dashboard')}
                 style={{ position: 'relative', zIndex: 1 }}
             >
-                {/* 问候语和操作按钮 */}
+                {/* Greeting and action buttons */}
                 <div
                     className="flex justify-between items-center"
                 >
@@ -178,7 +178,7 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* 统计卡片 - 5 columns on medium screens and up */}
+                {/* Stats cards - 5 columns on medium screens and up */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200">
                         <div className="flex items-center justify-between mb-2">
@@ -247,7 +247,7 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* 双栏布局 */}
+                {/* Two-column layout */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <CurrentAccount
                         account={currentAccount}
@@ -260,7 +260,7 @@ function Dashboard() {
                     />
                 </div>
 
-                {/* 快速链接 */}
+                {/* Quick links */}
                 <div className="grid grid-cols-2 gap-3">
                     <button
                         className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 shadow-sm border border-indigo-100 dark:border-indigo-900/30 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all flex items-center justify-between group"

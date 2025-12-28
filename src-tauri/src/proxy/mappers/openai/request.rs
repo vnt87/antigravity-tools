@@ -1,4 +1,4 @@
-// OpenAI → Gemini 请求转换
+// OpenAI -> Gemini Request Transformation
 use super::models::*;
 use serde_json::{json, Value};
 use super::streaming::get_thought_signature;
@@ -10,7 +10,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
     tracing::info!("[Debug] OpenAI Request: original='{}', mapped='{}', type='{}', has_image_config={}", 
         request.model, mapped_model, config.request_type, config.image_config.is_some());
     
-    // 1. 提取所有 System Message 并注入补丁
+    // 1. Extract all System Messages and inject patches
     let mut system_instructions: Vec<String> = request.messages.iter()
         .filter(|msg| msg.role == "system")
         .filter_map(|msg| {
@@ -29,7 +29,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         })
         .collect();
 
-    // 注入 Codex/Coding Agent 补丁
+    // Inject Codex/Coding Agent patch
     system_instructions.push("You are a coding agent. You MUST use the provided 'shell' tool to perform ANY filesystem operations (reading, writing, creating files). Do not output JSON code blocks for tool execution; invoke the functions directly. To create a file, use the 'shell' tool with 'New-Item' or 'Set-Content' (Powershell). NEVER simulate/hallucinate actions in text without calling the tool first.".to_string());
 
     // Pre-scan to map tool_call_id to function name (for Codex)
@@ -44,13 +44,13 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         }
     }
 
-    // 从全局存储获取 thoughtSignature (PR #93 支持)
+    // Get thoughtSignature from global storage (PR #93 support)
     let global_thought_sig = get_thought_signature();
     if global_thought_sig.is_some() {
-        tracing::info!("从全局存储获取到 thoughtSignature (长度: {})", global_thought_sig.as_ref().unwrap().len());
+        tracing::info!("Got thoughtSignature from global storage (length: {})", global_thought_sig.as_ref().unwrap().len());
     }
 
-    // 2. 构建 Gemini contents (过滤掉 system)
+    // 2. Build Gemini contents (filter out system)
     let contents: Vec<Value> = request
         .messages
         .iter()
@@ -70,7 +70,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
                     OpenAIContent::String(s) => {
                         if !s.is_empty() {
                             if role == "user" && mapped_model.contains("gemini-3") {
-                                // 为 Gemini 3 用户消息添加提醒补丁
+                                // Add reminder patch for Gemini 3 user messages
                                 let reminder = "\n\n(SYSTEM REMINDER: You MUST use the 'shell' tool to perform this action. Do not simply state it is done.)";
                                 parts.push(json!({"text": format!("{}{}", s, reminder)}));
                             } else {
@@ -130,7 +130,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
                         }
                     });
 
-                    // 注入 thoughtSignature (PR #93)
+                    // Inject thoughtSignature (PR #93)
                     if index == 0 {
                         if let Some(ref sig) = global_thought_sig {
                             func_call_part["thoughtSignature"] = json!(sig);
@@ -167,7 +167,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         })
         .collect();
 
-    // 3. 构建请求体
+    // 3. Build request body
     let mut gen_config = json!({
         "maxOutputTokens": request.max_tokens.unwrap_or(64000),
         "temperature": request.temperature.unwrap_or(1.0),
@@ -222,9 +222,9 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
             }
 
             if let Some(params) = gemini_func.get_mut("parameters") {
-                // 先应用全局清洗
+                // Apply global cleaning first
                 crate::proxy::common::json_schema::clean_json_schema(params);
-                // 再应用 Gemini 专有映射 (PR #93)
+                // Then apply Gemini specific mapping (PR #93)
                 if let Some(params_obj) = params.as_object_mut() {
                     if !params_obj.contains_key("type") {
                         params_obj.insert("type".to_string(), json!("OBJECT"));

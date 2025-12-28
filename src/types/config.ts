@@ -24,9 +24,9 @@ export interface AppConfig {
     auto_sync: boolean;
     sync_interval: number;
     default_export_path?: string;
-    antigravity_executable?: string; // [NEW] 手动指定的反重力程序路径
-    auto_launch?: boolean; // 开机自动启动
-    accounts_page_size?: number; // 账号列表每页显示数量,默认 0 表示自动计算
+    antigravity_executable?: string; // [NEW] Manually specified Antigravity executable path
+    auto_launch?: boolean; // Auto launch on startup
+    accounts_page_size?: number; // Number of accounts per page, default 0 means auto calculation
     proxy: ProxyConfig;
 }
 

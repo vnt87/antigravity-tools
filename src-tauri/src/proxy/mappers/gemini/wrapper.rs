@@ -1,22 +1,25 @@
-// Gemini v1internal 包装/解包
+// Gemini v1internal wrapping/unwrapping
 use serde_json::{json, Value};
 
-/// 包装请求体为 v1internal 格式
+/// Wrap request body to v1internal format
 pub fn wrap_request(body: &Value, project_id: &str, mapped_model: &str) -> Value {
-    // 优先使用传入的 mapped_model，其次尝试从 body 获取
-    let original_model = body.get("model").and_then(|v| v.as_str()).unwrap_or(mapped_model);
-    
-    // 如果 mapped_model 是空的，则使用 original_model
+    // Prioritize using passed mapped_model, then try to get from body
+    let original_model = body
+        .get("model")
+        .and_then(|v| v.as_str())
+        .unwrap_or(mapped_model);
+
+    // If mapped_model is empty, use original_model
     let final_model_name = if !mapped_model.is_empty() {
         mapped_model
     } else {
         original_model
     };
 
-    // 复制 body 以便修改
+    // Copy body for modification
     let mut inner_request = body.clone();
 
-    // 强制设置 Gemini v1internal 的最大输出 token 数
+    // Force set max output tokens for Gemini v1internal
     if let Some(obj) = inner_request.as_object_mut() {
         let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
         if let Some(gen_obj) = gen_config.as_object_mut() {
@@ -25,8 +28,11 @@ pub fn wrap_request(body: &Value, project_id: &str, mapped_model: &str) -> Value
     }
 
     // Use shared grounding/config logic
-    let config = crate::proxy::mappers::common_utils::resolve_request_config(original_model, final_model_name);
-    
+    let config = crate::proxy::mappers::common_utils::resolve_request_config(
+        original_model,
+        final_model_name,
+    );
+
     // Clean tool declarations (remove forbidden Schema fields like multipleOf)
     if let Some(tools) = inner_request.get_mut("tools") {
         if let Some(tools_arr) = tools.as_array_mut() {
@@ -44,9 +50,14 @@ pub fn wrap_request(body: &Value, project_id: &str, mapped_model: &str) -> Value
         }
     }
 
-    tracing::info!("[Debug] Gemini Wrap: original='{}', mapped='{}', final='{}', type='{}'", 
-        original_model, final_model_name, config.final_model, config.request_type);
-    
+    tracing::info!(
+        "[Debug] Gemini Wrap: original='{}', mapped='{}', final='{}', type='{}'",
+        original_model,
+        final_model_name,
+        config.final_model,
+        config.request_type
+    );
+
     // Inject googleSearch tool if needed
     if config.inject_google_search {
         crate::proxy::mappers::common_utils::inject_google_search_tool(&mut inner_request);
@@ -54,27 +65,27 @@ pub fn wrap_request(body: &Value, project_id: &str, mapped_model: &str) -> Value
 
     // Inject imageConfig if present (for image generation models)
     if let Some(image_config) = config.image_config {
-         if let Some(obj) = inner_request.as_object_mut() {
-             // 1. Remove tools (image generation does not support tools)
-             obj.remove("tools");
-             
-             // 2. Remove systemInstruction (image generation does not support system prompts)
-             obj.remove("systemInstruction");
+        if let Some(obj) = inner_request.as_object_mut() {
+            // 1. Remove tools (image generation does not support tools)
+            obj.remove("tools");
 
-             // 3. Clean generationConfig (remove thinkingConfig, responseMimeType, responseModalities etc.)
-             let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
-             if let Some(gen_obj) = gen_config.as_object_mut() {
-                 gen_obj.remove("thinkingConfig");
-                 gen_obj.remove("responseMimeType"); 
-                 gen_obj.remove("responseModalities"); // Cherry Studio sends this, might conflict
-                 gen_obj.insert("imageConfig".to_string(), image_config);
-             }
-         }
+            // 2. Remove systemInstruction (image generation does not support system prompts)
+            obj.remove("systemInstruction");
+
+            // 3. Clean generationConfig (remove thinkingConfig, responseMimeType, responseModalities etc.)
+            let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
+            if let Some(gen_obj) = gen_config.as_object_mut() {
+                gen_obj.remove("thinkingConfig");
+                gen_obj.remove("responseMimeType");
+                gen_obj.remove("responseModalities"); // Cherry Studio sends this, might conflict
+                gen_obj.insert("imageConfig".to_string(), image_config);
+            }
+        }
     }
 
     let final_request = json!({
         "project": project_id,
-        "requestId": format!("agent-{}", uuid::Uuid::new_v4()), // 修正为 agent- 前缀
+        "requestId": format!("agent-{}", uuid::Uuid::new_v4()), // Corrected to agent- prefix
         "request": inner_request,
         "model": config.final_model,
         "userAgent": "antigravity",
@@ -84,7 +95,7 @@ pub fn wrap_request(body: &Value, project_id: &str, mapped_model: &str) -> Value
     final_request
 }
 
-/// 解包响应（提取 response 字段）
+/// Unwrap response (extract response field)
 pub fn unwrap_response(response: &Value) -> Value {
     response.get("response").unwrap_or(response).clone()
 }

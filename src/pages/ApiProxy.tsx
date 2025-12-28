@@ -122,7 +122,7 @@ export default function ApiProxy() {
     const [selectedProtocol, setSelectedProtocol] = useState<'openai' | 'anthropic' | 'gemini'>('openai');
     const [selectedModelId, setSelectedModelId] = useState('gemini-3-flash');
 
-    // 初始化加载
+    // Initial load
     useEffect(() => {
         loadConfig();
         loadStatus();
@@ -158,7 +158,7 @@ export default function ApiProxy() {
         }
     };
 
-    // 专门处理模型映射的热更新 (全量)
+    // Handle model mapping hot update (full)
     const handleMappingUpdate = async (type: 'anthropic' | 'openai' | 'custom', key: string, value: string) => {
         if (!appConfig) return;
 
@@ -229,7 +229,7 @@ export default function ApiProxy() {
             if (status.running) {
                 await invoke('stop_proxy_service');
             } else {
-                // 使用当前的 appConfig.proxy 启动
+                // Start with current appConfig.proxy
                 await invoke('start_proxy_service', { config: appConfig.proxy });
             }
             await loadStatus();
@@ -262,7 +262,7 @@ export default function ApiProxy() {
 
     const getPythonExample = (modelId: string) => {
         const port = status.running ? status.port : (appConfig?.proxy.port || 8045);
-        // 推荐使用 127.0.0.1 以避免部分环境 IPv6 解析延迟问题
+        // Recommend using 127.0.0.1 to avoid IPv6 resolution delay issues in some environments
         const baseUrl = `http://127.0.0.1:${port}/v1`;
         const apiKey = appConfig?.proxy.api_key || 'YOUR_API_KEY';
 
@@ -271,17 +271,6 @@ export default function ApiProxy() {
             return `from anthropic import Anthropic
  
  client = Anthropic(
-     # 推荐使用 127.0.0.1
-     base_url="${`http://127.0.0.1:${port}`}",
-     api_key="${apiKey}"
- )
- 
- # 注意: Antigravity 支持使用 Anthropic SDK 调用任意模型
- response = client.messages.create(
-     model="${modelId}",
-     max_tokens=1024,
-     messages=[{"role": "user", "content": "Hello"}]
- )
  
  print(response.content[0].text)`;
         }
@@ -289,10 +278,10 @@ export default function ApiProxy() {
         // 2. Gemini Protocol (Native)
         if (selectedProtocol === 'gemini') {
             const rawBaseUrl = `http://127.0.0.1:${port}`;
-            return `# 需要安装: pip install google-generativeai
+            return `# Requires installation: pip install google-generativeai
 import google.generativeai as genai
 
-# 使用 Antigravity 代理地址 (推荐 127.0.0.1)
+# Use Antigravity proxy address (Recommend 127.0.0.1)
 genai.configure(
     api_key="${apiKey}",
     transport='rest',
@@ -315,12 +304,12 @@ print(response.text)`;
  
  response = client.chat.completions.create(
      model="${modelId}",
-     # 方式 1: 使用 size 参数 (推荐)
-     # 支持: "1024x1024" (1:1), "1280x720" (16:9), "720x1280" (9:16), "1216x896" (4:3)
+     # Method 1: Use size parameter (Recommended)
+     # Supports: "1024x1024" (1:1), "1280x720" (16:9), "720x1280" (9:16), "1216x896" (4:3)
      extra_body={ "size": "1024x1024" },
      
-     # 方式 2: 使用模型后缀
-     # 例如: gemini-3-pro-image-16-9, gemini-3-pro-image-4-3
+     # Method 2: Use model suffix
+     # Example: gemini-3-pro-image-16-9, gemini-3-pro-image-4-3
      # model="gemini-3-pro-image-16-9",
      messages=[{
          "role": "user",
@@ -346,12 +335,12 @@ print(response.text)`;
  print(response.choices[0].message.content)`;
     };
 
-    // 在 filter 逻辑中，当选择 openai 协议时，允许显示所有模型
+    // In filter logic, allow showing all models when openai protocol is selected
     const filteredModels = models.filter(model => {
         if (selectedProtocol === 'openai') {
             return true;
         }
-        // Anthropic 协议下隐藏不支持的图片模型
+        // Hide unsupported image models under Anthropic protocol
         if (selectedProtocol === 'anthropic') {
             return !model.id.includes('image');
         }
@@ -363,7 +352,7 @@ print(response.text)`;
             <div className="p-5 space-y-4 max-w-7xl mx-auto">
 
 
-                {/* 配置区 */}
+                {/* Configuration area */}
                 {appConfig && (
                     <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200">
                         <div className="px-4 py-2.5 border-b border-gray-100 dark:border-base-200 flex items-center justify-between">
@@ -372,7 +361,7 @@ print(response.text)`;
                                     <Settings size={18} />
                                     {t('proxy.config.title')}
                                 </h2>
-                                {/* 状态指示器 */}
+                                {/* Status indicator */}
                                 <div className="flex items-center gap-2 pl-4 border-l border-gray-200 dark:border-base-300">
                                     <div className={`w-2 h-2 rounded-full ${status.running ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
                                     <span className={`text-xs font-medium ${status.running ? 'text-green-600' : 'text-gray-500'}`}>
@@ -383,7 +372,7 @@ print(response.text)`;
                                 </div>
                             </div>
 
-                            {/* 控制按钮 */}
+                            {/* Control buttons */}
                             <button
                                 onClick={handleToggle}
                                 disabled={loading || !appConfig}
@@ -397,7 +386,7 @@ print(response.text)`;
                             </button>
                         </div>
                         <div className="p-3 space-y-3">
-                            {/* 监听端口、超时和自启动 */}
+                            {/* Listening port, timeout, and auto-start */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 <div>
                                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -456,7 +445,7 @@ print(response.text)`;
                                 </div>
                             </div>
 
-                            {/* 局域网访问开关 */}
+                            {/* LAN access toggle */}
                             <div className="border-t border-gray-200 dark:border-base-300 pt-3 mt-3">
                                 <label className="flex items-start gap-3 cursor-pointer">
                                     <div className="relative flex-shrink-0 mt-0.5">
@@ -493,8 +482,8 @@ print(response.text)`;
                                 </label>
                             </div>
 
-                            {/* API 密钥 */}
-                            {/* API 密钥 */}
+                            {/* API Key */}
+                            {/* API Key */}
                             <div>
                                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     {t('proxy.config.api_key')}
@@ -534,7 +523,7 @@ print(response.text)`;
                 )}
 
 
-                {/* 模型路由中心 */}
+                {/* Model routing center */}
                 {appConfig && (
                     <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200 overflow-hidden">
                         <div className="px-4 py-2.5 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/50">
@@ -559,13 +548,13 @@ print(response.text)`;
                         </div>
 
                         <div className="p-3 space-y-3">
-                            {/* 分组映射区域 */}
+                            {/* Group mapping area */}
                             <div>
                                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                     <Layers size={14} /> {t('proxy.router.group_title')}
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                                    {/* Claude 4.5 系列 */}
+                                    {/* Claude 4.5 Series */}
                                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 p-3 rounded-xl border border-blue-100 dark:border-blue-800/30 relative overflow-hidden group hover:border-blue-400 transition-all duration-300">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
@@ -601,7 +590,7 @@ print(response.text)`;
                                         </select>
                                     </div>
 
-                                    {/* Claude 3.5 系列 */}
+                                    {/* Claude 3.5 Series */}
                                     <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 p-3 rounded-xl border border-purple-100 dark:border-purple-800/30 relative overflow-hidden group hover:border-purple-400 transition-all duration-300">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/30">
@@ -637,7 +626,7 @@ print(response.text)`;
                                         </select>
                                     </div>
 
-                                    {/* GPT-4 系列 */}
+                                    {/* GPT-4 Series */}
                                     <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800/30 relative overflow-hidden group hover:border-indigo-400 transition-all duration-300">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
@@ -654,16 +643,16 @@ print(response.text)`;
                                             onChange={(e) => handleMappingUpdate('openai', 'gpt-4-series', e.target.value)}
                                         >
                                             <option value="">gemini-3-pro-high{t('proxy.router.default_suffix', ' (Default)')}</option>
-                                            <optgroup label="Gemini 3 (推荐)">
-                                                <option value="gemini-3-pro-high">gemini-3-pro-high (高质量)</option>
-                                                <option value="gemini-3-pro-low">gemini-3-pro-low (均衡)</option>
-                                                <option value="gemini-3-flash">gemini-3-flash (快速)</option>
+                                            <optgroup label="Gemini 3 (Recommended)">
+                                                <option value="gemini-3-pro-high">gemini-3-pro-high (High Quality)</option>
+                                                <option value="gemini-3-pro-low">gemini-3-pro-low (Balanced)</option>
+                                                <option value="gemini-3-flash">gemini-3-flash (Fast)</option>
                                             </optgroup>
                                         </select>
                                         <p className="mt-1 text-[9px] text-indigo-500">{t('proxy.router.gemini3_only_warning')}</p>
                                     </div>
 
-                                    {/* GPT-4o / 3.5 系列 */}
+                                    {/* GPT-4o / 3.5 Series */}
                                     <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800/30 relative overflow-hidden group hover:border-emerald-400 transition-all duration-300">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
@@ -680,16 +669,16 @@ print(response.text)`;
                                             onChange={(e) => handleMappingUpdate('openai', 'gpt-4o-series', e.target.value)}
                                         >
                                             <option value="">gemini-3-flash{t('proxy.router.default_suffix', ' (Default)')}</option>
-                                            <optgroup label="Gemini 3 (推荐)">
-                                                <option value="gemini-3-flash">gemini-3-flash (快速)</option>
-                                                <option value="gemini-3-pro-high">gemini-3-pro-high (高质量)</option>
-                                                <option value="gemini-3-pro-low">gemini-3-pro-low (均衡)</option>
+                                            <optgroup label="Gemini 3 (Recommended)">
+                                                <option value="gemini-3-flash">gemini-3-flash (Fast)</option>
+                                                <option value="gemini-3-pro-high">gemini-3-pro-high (High Quality)</option>
+                                                <option value="gemini-3-pro-low">gemini-3-pro-low (Balanced)</option>
                                             </optgroup>
                                         </select>
                                         <p className="mt-1 text-[9px] text-emerald-600">{t('proxy.router.gemini3_only_warning')}</p>
                                     </div>
 
-                                    {/* GPT-5 系列 */}
+                                    {/* GPT-5 Series */}
                                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 p-3 rounded-xl border border-amber-100 dark:border-amber-800/30 relative overflow-hidden group hover:border-amber-400 transition-all duration-300">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
@@ -706,10 +695,10 @@ print(response.text)`;
                                             onChange={(e) => handleMappingUpdate('openai', 'gpt-5-series', e.target.value)}
                                         >
                                             <option value="">gemini-3-flash{t('proxy.router.default_suffix', ' (Default)')}</option>
-                                            <optgroup label="Gemini 3 (推荐)">
-                                                <option value="gemini-3-flash">gemini-3-flash (快速)</option>
-                                                <option value="gemini-3-pro-high">gemini-3-pro-high (高质量)</option>
-                                                <option value="gemini-3-pro-low">gemini-3-pro-low (均衡)</option>
+                                            <optgroup label="Gemini 3 (Recommended)">
+                                                <option value="gemini-3-flash">gemini-3-flash (Fast)</option>
+                                                <option value="gemini-3-pro-high">gemini-3-pro-high (High Quality)</option>
+                                                <option value="gemini-3-pro-low">gemini-3-pro-low (Balanced)</option>
                                             </optgroup>
                                         </select>
                                         <p className="mt-1 text-[9px] text-amber-600">{t('proxy.router.gemini3_only_warning')}</p>
@@ -717,7 +706,7 @@ print(response.text)`;
                                 </div>
                             </div>
 
-                            {/* 精确映射管理 */}
+                            {/* Precise mapping management */}
                             <div className="pt-4 border-t border-gray-100 dark:border-base-200">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -725,7 +714,7 @@ print(response.text)`;
                                     </h3>
                                 </div>
                                 <div className="flex flex-col lg:flex-row gap-6">
-                                    {/* 添加映射表单 */}
+                                    {/* Add mapping form */}
                                     <div className="flex-1 flex flex-col gap-3">
                                         <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                             <Target size={12} />
@@ -761,7 +750,7 @@ print(response.text)`;
                                             {t('common.add')}
                                         </button>
                                     </div>
-                                    {/* 自定义精确映射表格 */}
+                                    {/* Custom precise mapping table */}
                                     <div className="flex-1 min-w-[300px] flex flex-col">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">

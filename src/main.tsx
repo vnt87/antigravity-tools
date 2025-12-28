@@ -6,8 +6,8 @@ import App from './App';
 import './i18n'; // Import i18n config
 import "./App.css";
 
-// 启动时显式调用 Rust 命令显示窗口
-// 配合 visible:false 使用，解决启动黑屏问题
+// Explicitly call Rust command to show window on startup
+// Used with visible:false to solve startup black screen issue
 invoke("show_main_window").catch(console.error);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

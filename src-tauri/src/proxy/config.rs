@@ -1,55 +1,54 @@
 use serde::{Deserialize, Serialize};
 // use std::path::PathBuf;
 
-/// 反代服务配置
+/// Reverse Proxy Configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyConfig {
-    /// 是否启用反代服务
+    /// Whether to enable reverse proxy service
     pub enabled: bool,
 
-    /// 是否允许局域网访问
-    /// - false: 仅本机访问 127.0.0.1（默认，隐私优先）
-    /// - true: 允许局域网访问 0.0.0.0
+    /// Whether to allow LAN access
+    /// - false: Localhost only 127.0.0.1 (default, privacy first)
+    /// - true: Allow LAN access 0.0.0.0
     #[serde(default)]
     pub allow_lan_access: bool,
-    
-    /// 监听端口
-    pub port: u16,
-    
-    /// API 密钥
-    pub api_key: String,
-    
 
-    /// 是否自动启动
+    /// Listening port
+    pub port: u16,
+
+    /// API Key
+    pub api_key: String,
+
+    /// Whether to auto-start
     pub auto_start: bool,
 
-    /// Anthropic 模型映射表 (key: Claude模型名, value: Gemini模型名)
+    /// Anthropic model mapping (key: Claude model name, value: Gemini model name)
     #[serde(default)]
     pub anthropic_mapping: std::collections::HashMap<String, String>,
 
-    /// OpenAI 模型映射表 (key: OpenAI模型组, value: Gemini模型名)
+    /// OpenAI model mapping (key: OpenAI model group, value: Gemini model name)
     #[serde(default)]
     pub openai_mapping: std::collections::HashMap<String, String>,
 
-    /// 自定义精确模型映射表 (key: 原始模型名, value: 目标模型名)
+    /// Custom exact model mapping (key: original model name, value: target model name)
     #[serde(default)]
     pub custom_mapping: std::collections::HashMap<String, String>,
 
-    /// API 请求超时时间(秒)
+    /// API request timeout (seconds)
     #[serde(default = "default_request_timeout")]
     pub request_timeout: u64,
 
-    /// 上游代理配置
+    /// Upstream proxy configuration
     #[serde(default)]
     pub upstream_proxy: UpstreamProxyConfig,
 }
 
-/// 上游代理配置
+/// Upstream proxy configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct UpstreamProxyConfig {
-    /// 是否启用
+    /// Whether to enable
     pub enabled: bool,
-    /// 代理地址 (http://, https://, socks5://)
+    /// Proxy address (http://, https://, socks5://)
     pub url: String,
 }
 
@@ -57,7 +56,7 @@ impl Default for ProxyConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            allow_lan_access: false, // 默认仅本机访问，隐私优先
+            allow_lan_access: false, // Default localhost only, privacy first
             port: 8045,
             api_key: format!("sk-{}", uuid::Uuid::new_v4().simple()),
             auto_start: false,
@@ -71,13 +70,13 @@ impl Default for ProxyConfig {
 }
 
 fn default_request_timeout() -> u64 {
-    120  // 默认 120 秒,原来 60 秒太短
+    120 // Default 120 seconds, previous 60 seconds was too short
 }
 
 impl ProxyConfig {
-    /// 获取实际的监听地址
-    /// - allow_lan_access = false: 返回 "127.0.0.1"（默认，隐私优先）
-    /// - allow_lan_access = true: 返回 "0.0.0.0"（允许局域网访问）
+    /// Get actual bind address
+    /// - allow_lan_access = false: Returns "127.0.0.1" (default, privacy first)
+    /// - allow_lan_access = true: Returns "0.0.0.0" (allow LAN access)
     pub fn get_bind_address(&self) -> &str {
         if self.allow_lan_access {
             "0.0.0.0"

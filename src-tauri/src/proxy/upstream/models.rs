@@ -1,4 +1,4 @@
-// 上游 API 模型
+// Upstream API models
 pub struct UpstreamModels {
     // TODO: Phase 3
 }

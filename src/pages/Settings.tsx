@@ -50,7 +50,7 @@ function Settings() {
     useEffect(() => {
         loadConfig();
 
-        // 获取真实数据目录路径
+        // Get real data directory path
         invoke<string>('get_data_dir_path')
             .then(path => setDataDirPath(path))
             .catch(err => console.error('Failed to get data dir:', err));
@@ -164,9 +164,9 @@ function Settings() {
     return (
         <div className="h-full w-full overflow-y-auto">
             <div className="p-5 space-y-4 max-w-7xl mx-auto">
-                {/* 顶部工具栏：Tab 导航和保存按钮 */}
+                {/* Top toolbar: Tab navigation and save button */}
                 <div className="flex justify-between items-center">
-                    {/* Tab 导航 - 采用顶部导航栏样式：外层灰色容器 */}
+                    {/* Tab navigation - Use top navbar style: Outer gray container */}
                     <div className="flex items-center gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1 w-fit">
                         <button
                             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'general'
@@ -224,14 +224,14 @@ function Settings() {
                     </button>
                 </div>
 
-                {/* 设置表单 */}
+                {/* Settings form */}
                 <div className="bg-white dark:bg-base-100 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-base-200">
-                    {/* 通用设置 */}
+                    {/* General settings */}
                     {activeTab === 'general' && (
                         <div className="space-y-6">
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">{t('settings.general.title')}</h2>
 
-                            {/* 语言选择 */}
+                            {/* Language selection */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.general.language')}</label>
                                 <select
@@ -244,7 +244,7 @@ function Settings() {
                                 </select>
                             </div>
 
-                            {/* 主题选择 */}
+                            {/* Theme selection */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.general.theme')}</label>
                                 <select
@@ -258,7 +258,7 @@ function Settings() {
                                 </select>
                             </div>
 
-                            {/* 开机自动启动 */}
+                            {/* Auto launch on startup */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.general.auto_launch')}</label>
                                 <select
@@ -283,12 +283,12 @@ function Settings() {
                         </div>
                     )}
 
-                    {/* 账号设置 */}
+                    {/* Account settings */}
                     {activeTab === 'account' && (
                         <div className="space-y-6">
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">{t('settings.account.title')}</h2>
 
-                            {/* 自动刷新配额 */}
+                            {/* Auto refresh quota */}
                             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-base-200 rounded-lg border border-gray-100 dark:border-base-300">
                                 <div>
                                     <div className="font-medium text-gray-900 dark:text-base-content">{t('settings.account.auto_refresh')}</div>
@@ -305,7 +305,7 @@ function Settings() {
                                 </label>
                             </div>
 
-                            {/* 刷新间隔 */}
+                            {/* Refresh interval */}
                             {formData.auto_refresh && (
                                 <div className="ml-4">
                                     <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.account.refresh_interval')}</label>
@@ -320,7 +320,7 @@ function Settings() {
                                 </div>
                             )}
 
-                            {/* 自动获取当前账号 */}
+                            {/* Auto sync current account */}
                             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-base-200 rounded-lg border border-gray-100 dark:border-base-300">
                                 <div>
                                     <div className="font-medium text-gray-900 dark:text-base-content">{t('settings.account.auto_sync')}</div>
@@ -337,7 +337,7 @@ function Settings() {
                                 </label>
                             </div>
 
-                            {/* 同步间隔 */}
+                            {/* Sync interval */}
                             {formData.auto_sync && (
                                 <div className="ml-4">
                                     <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-2">{t('settings.account.sync_interval')}</label>
@@ -354,12 +354,12 @@ function Settings() {
                         </div>
                     )}
 
-                    {/* 高级设置 */}
+                    {/* Advanced settings */}
                     {activeTab === 'advanced' && (
                         <div className="space-y-4">
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">{t('settings.advanced.title')}</h2>
 
-                            {/* 默认导出路径 */}
+                            {/* Default export path */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">{t('settings.advanced.export_path')}</label>
                                 <div className="flex gap-2">
@@ -387,7 +387,7 @@ function Settings() {
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('settings.advanced.default_export_path_desc')}</p>
                             </div>
 
-                            {/* 数据目录 */}
+                            {/* Data directory */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">{t('settings.advanced.data_dir')}</label>
                                 <div className="flex gap-2">
@@ -407,7 +407,7 @@ function Settings() {
                                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{t('settings.advanced.data_dir_desc')}</p>
                             </div>
 
-                            {/* 反重力程序路径 */}
+                            {/* Antigravity executable path */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 dark:text-base-content mb-1">
                                     {t('settings.advanced.antigravity_path')}
@@ -466,7 +466,7 @@ function Settings() {
                         </div>
                     )}
 
-                    {/* 代理设置 */}
+                    {/* Proxy settings */}
                     {activeTab === 'proxy' && (
                         <div className="space-y-6">
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">{t('settings.tabs.proxy')}</h2>

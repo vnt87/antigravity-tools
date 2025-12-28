@@ -1,6 +1,6 @@
-// Upstream 模块 - 上游客户端
-// 对应上游通讯接口
+// Upstream Module - Upstream Client
+// Corresponds to upstream communication interface
 
 pub mod client;
-pub mod retry;
 pub mod models;
+pub mod retry;

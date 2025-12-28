@@ -1,9 +1,9 @@
-// Claude 数据模型
-// Claude 协议相关数据模型
+// Claude Data Models
+// Claude protocol related data models
 
 use serde::{Deserialize, Serialize};
 
-/// Claude API 请求
+/// Claude API Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeRequest {
     pub model: String,
@@ -28,11 +28,11 @@ pub struct ClaudeRequest {
     pub metadata: Option<Metadata>,
 }
 
-/// Thinking 配置
+/// Thinking Configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkingConfig {
     #[serde(rename = "type")]
-    pub type_: String,  // "enabled"
+    pub type_: String, // "enabled"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub budget_tokens: Option<u32>,
 }
@@ -71,9 +71,7 @@ pub enum MessageContent {
 #[serde(tag = "type")]
 pub enum ContentBlock {
     #[serde(rename = "text")]
-    Text {
-        text: String,
-    },
+    Text { text: String },
 
     #[serde(rename = "thinking")]
     Thinking {
@@ -83,9 +81,7 @@ pub enum ContentBlock {
     },
 
     #[serde(rename = "image")]
-    Image {
-        source: ImageSource,
-    },
+    Image { source: ImageSource },
 
     #[serde(rename = "tool_use")]
     ToolUse {
@@ -105,9 +101,7 @@ pub enum ContentBlock {
     },
 
     #[serde(rename = "redacted_thinking")]
-    RedactedThinking {
-        data: String,
-    },
+    RedactedThinking { data: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,7 +128,7 @@ pub struct Metadata {
     pub user_id: Option<String>,
 }
 
-/// Claude API 响应
+/// Claude API Response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClaudeResponse {
     pub id: String,
@@ -156,7 +150,7 @@ pub struct Usage {
     pub output_tokens: u32,
 }
 
-// ========== Gemini 数据模型 ==========
+// ========== Gemini Data Models ==========
 
 /// Gemini Content
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,7 +209,7 @@ pub struct InlineData {
     pub data: String,
 }
 
-/// Gemini 完整响应
+/// Gemini Complete Response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeminiResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -225,7 +219,7 @@ pub struct GeminiResponse {
     pub usage_metadata: Option<UsageMetadata>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "modelVersion")]
-   pub model_version: Option<String>,
+    pub model_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "responseId")]
     pub response_id: Option<String>,

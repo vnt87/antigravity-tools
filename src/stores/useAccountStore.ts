@@ -18,7 +18,7 @@ interface AccountState {
     refreshQuota: (accountId: string) => Promise<void>;
     refreshAllQuotas: () => Promise<accountService.RefreshStats>;
 
-    // 新增 actions
+    // New actions
     startOAuthLogin: () => Promise<void>;
     completeOAuthLogin: () => Promise<void>;
     cancelOAuthLogin: () => Promise<void>;

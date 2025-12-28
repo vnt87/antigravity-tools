@@ -1,21 +1,21 @@
 use crate::proxy::ProxyConfig;
 use serde::{Deserialize, Serialize};
 
-/// 应用配置
+/// Application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     pub language: String,
     pub theme: String,
     pub auto_refresh: bool,
-    pub refresh_interval: i32, // 分钟
+    pub refresh_interval: i32, // Minutes
     pub auto_sync: bool,
-    pub sync_interval: i32, // 分钟
+    pub sync_interval: i32, // Minutes
     pub default_export_path: Option<String>,
     #[serde(default)]
     pub proxy: ProxyConfig,
-    pub antigravity_executable: Option<String>, // [NEW] 手动指定的反重力程序路径
+    pub antigravity_executable: Option<String>, // [NEW] Manually specified Antigravity executable path
     #[serde(default)]
-    pub auto_launch: bool, // 开机自动启动
+    pub auto_launch: bool, // Auto launch on startup
 }
 
 impl AppConfig {

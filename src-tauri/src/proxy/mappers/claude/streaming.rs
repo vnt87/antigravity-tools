@@ -1,12 +1,12 @@
-// Claude 流式响应转换 (Gemini SSE → Claude SSE)
-// 对应 StreamingState + PartProcessor
+// Claude Streaming Response Transformation (Gemini SSE -> Claude SSE)
+// Corresponds to StreamingState + PartProcessor
 
 use super::models::*;
 use super::utils::to_claude_usage;
 use bytes::Bytes;
 use serde_json::json;
 
-/// 块类型枚举
+/// Block Type Enum
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockType {
     None,
@@ -15,7 +15,7 @@ pub enum BlockType {
     Function,
 }
 
-/// 签名管理器
+/// Signature Manager
 pub struct SignatureManager {
     pending: Option<String>,
 }
@@ -40,7 +40,7 @@ impl SignatureManager {
     }
 }
 
-/// 流式状态机
+/// Streaming State Machine
 pub struct StreamingState {
     block_type: BlockType,
     block_index: usize,
@@ -64,7 +64,7 @@ impl StreamingState {
         }
     }
 
-    /// 发送 SSE 事件
+    /// Emit SSE event
     pub fn emit(&self, event_type: &str, data: serde_json::Value) -> Bytes {
         let sse = format!(
             "event: {}\ndata: {}\n\n",
@@ -74,7 +74,7 @@ impl StreamingState {
         Bytes::from(sse)
     }
 
-    /// 发送 message_start 事件
+    /// Emit message_start event
     pub fn emit_message_start(&mut self, raw_json: &serde_json::Value) -> Bytes {
         if self.message_start_sent {
             return Bytes::new();
@@ -115,8 +115,12 @@ impl StreamingState {
         result
     }
 
-    /// 开始新的内容块
-    pub fn start_block(&mut self, block_type: BlockType, content_block: serde_json::Value) -> Vec<Bytes> {
+    /// Start new content block
+    pub fn start_block(
+        &mut self,
+        block_type: BlockType,
+        content_block: serde_json::Value,
+    ) -> Vec<Bytes> {
         let mut chunks = Vec::new();
         if self.block_type != BlockType::None {
             chunks.extend(self.end_block());
@@ -135,7 +139,7 @@ impl StreamingState {
         chunks
     }
 
-    /// 结束当前内容块
+    /// End current content block
     pub fn end_block(&mut self) -> Vec<Bytes> {
         if self.block_type == BlockType::None {
             return vec![];
@@ -143,7 +147,7 @@ impl StreamingState {
 
         let mut chunks = Vec::new();
 
-        // Thinking 块结束时发送暂存的签名
+        // Emit buffered signature when Thinking block ends
         if self.block_type == BlockType::Thinking && self.signatures.has_pending() {
             if let Some(signature) = self.signatures.consume() {
                 chunks.push(self.emit_delta("signature_delta", json!({ "signature": signature })));
@@ -164,7 +168,7 @@ impl StreamingState {
         chunks
     }
 
-    /// 发送 delta 事件
+    /// Emit delta event
     pub fn emit_delta(&self, delta_type: &str, delta_content: serde_json::Value) -> Bytes {
         let mut delta = json!({ "type": delta_type });
         if let serde_json::Value::Object(map) = delta_content {
@@ -183,7 +187,7 @@ impl StreamingState {
         )
     }
 
-    /// 发送结束事件
+    /// Emit finish event
     pub fn emit_finish(
         &mut self,
         finish_reason: Option<&str>,
@@ -191,10 +195,10 @@ impl StreamingState {
     ) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
-        // 关闭最后一个块
+        // Close the last block
         chunks.extend(self.end_block());
 
-        // 处理 trailingSignature (PDF 776-778)
+        // Handle trailingSignature (PDF 776-778)
         if let Some(signature) = self.trailing_signature.take() {
             chunks.push(self.emit(
                 "content_block_start",
@@ -216,7 +220,7 @@ impl StreamingState {
             self.block_index += 1;
         }
 
-        // 确定 stop_reason
+        // Determine stop_reason
         let stop_reason = if self.used_tool {
             "tool_use"
         } else if finish_reason == Some("MAX_TOKENS") {
@@ -225,12 +229,10 @@ impl StreamingState {
             "end_turn"
         };
 
-        let usage = usage_metadata
-            .map(|u| to_claude_usage(u))
-            .unwrap_or(Usage {
-                input_tokens: 0,
-                output_tokens: 0,
-            });
+        let usage = usage_metadata.map(|u| to_claude_usage(u)).unwrap_or(Usage {
+            input_tokens: 0,
+            output_tokens: 0,
+        });
 
         chunks.push(self.emit(
             "message_delta",
@@ -242,45 +244,47 @@ impl StreamingState {
         ));
 
         if !self.message_stop_sent {
-            chunks.push(Bytes::from("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"));
+            chunks.push(Bytes::from(
+                "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+            ));
             self.message_stop_sent = true;
         }
 
         chunks
     }
 
-    /// 标记使用了工具
+    /// Mark tool used
     pub fn mark_tool_used(&mut self) {
         self.used_tool = true;
     }
 
-    /// 获取当前块类型
+    /// Get current block type
     pub fn current_block_type(&self) -> BlockType {
         self.block_type
     }
 
-    /// 获取当前块索引
+    /// Get current block index
     pub fn current_block_index(&self) -> usize {
         self.block_index
     }
 
-    /// 存储签名
+    /// Store signature
     pub fn store_signature(&mut self, signature: Option<String>) {
         self.signatures.store(signature);
     }
 
-    /// 设置 trailing signature
+    /// Set trailing signature
     pub fn set_trailing_signature(&mut self, signature: Option<String>) {
         self.trailing_signature = signature;
     }
 
-    /// 获取 trailing signature (仅用于检查)
+    /// Get trailing signature (check only)
     pub fn has_trailing_signature(&self) -> bool {
         self.trailing_signature.is_some()
     }
 }
 
-/// Part 处理器
+/// Part Processor
 pub struct PartProcessor<'a> {
     state: &'a mut StreamingState,
 }
@@ -290,14 +294,14 @@ impl<'a> PartProcessor<'a> {
         Self { state }
     }
 
-    /// 处理单个 part
+    /// Process single part
     pub fn process(&mut self, part: &GeminiPart) -> Vec<Bytes> {
         let mut chunks = Vec::new();
         let signature = part.thought_signature.clone();
 
-        // 1. FunctionCall 处理
+        // 1. FunctionCall processing
         if let Some(fc) = &part.function_call {
-            // 先处理 trailingSignature (B4/C3 场景)
+            // Handle trailingSignature first (B4/C3 scenario)
             if self.state.has_trailing_signature() {
                 chunks.extend(self.state.end_block());
                 if let Some(trailing_sig) = self.state.trailing_signature.take() {
@@ -309,8 +313,14 @@ impl<'a> PartProcessor<'a> {
                             "content_block": { "type": "thinking", "thinking": "" }
                         }),
                     ));
-                    chunks.push(self.state.emit_delta("thinking_delta", json!({ "thinking": "" })));
-                    chunks.push(self.state.emit_delta("signature_delta", json!({ "signature": trailing_sig })));
+                    chunks.push(
+                        self.state
+                            .emit_delta("thinking_delta", json!({ "thinking": "" })),
+                    );
+                    chunks.push(
+                        self.state
+                            .emit_delta("signature_delta", json!({ "signature": trailing_sig })),
+                    );
                     chunks.extend(self.state.end_block());
                 }
             }
@@ -319,18 +329,18 @@ impl<'a> PartProcessor<'a> {
             return chunks;
         }
 
-        // 2. Text 处理
+        // 2. Text processing
         if let Some(text) = &part.text {
             if part.thought.unwrap_or(false) {
                 // Thinking
                 chunks.extend(self.process_thinking(text, signature));
             } else {
-                // 普通 Text
+                // Normal Text
                 chunks.extend(self.process_text(text, signature));
             }
         }
 
-        // 3. InlineData (Image) 处理
+        // 3. InlineData (Image) processing
         if let Some(img) = &part.inline_data {
             let mime_type = &img.mime_type;
             let data = &img.data;
@@ -343,11 +353,11 @@ impl<'a> PartProcessor<'a> {
         chunks
     }
 
-    /// 处理 Thinking
+    /// Process Thinking
     fn process_thinking(&mut self, text: &str, signature: Option<String>) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
-        // 处理之前的 trailingSignature
+        // Handle previous trailingSignature
         if self.state.has_trailing_signature() {
             chunks.extend(self.state.end_block());
             if let Some(trailing_sig) = self.state.trailing_signature.take() {
@@ -359,13 +369,19 @@ impl<'a> PartProcessor<'a> {
                         "content_block": { "type": "thinking", "thinking": "" }
                     }),
                 ));
-                chunks.push(self.state.emit_delta("thinking_delta", json!({ "thinking": "" })));
-                chunks.push(self.state.emit_delta("signature_delta", json!({ "signature": trailing_sig })));
+                chunks.push(
+                    self.state
+                        .emit_delta("thinking_delta", json!({ "thinking": "" })),
+                );
+                chunks.push(
+                    self.state
+                        .emit_delta("signature_delta", json!({ "signature": trailing_sig })),
+                );
                 chunks.extend(self.state.end_block());
             }
         }
 
-        // 开始或继续 thinking 块
+        // Start or continue thinking block
         if self.state.current_block_type() != BlockType::Thinking {
             chunks.extend(self.state.start_block(
                 BlockType::Thinking,
@@ -374,20 +390,23 @@ impl<'a> PartProcessor<'a> {
         }
 
         if !text.is_empty() {
-            chunks.push(self.state.emit_delta("thinking_delta", json!({ "thinking": text })));
+            chunks.push(
+                self.state
+                    .emit_delta("thinking_delta", json!({ "thinking": text })),
+            );
         }
 
-        // 暂存签名
+        // Buffer signature
         self.state.store_signature(signature);
 
         chunks
     }
 
-    /// 处理普通 Text
+    /// Process Normal Text
     fn process_text(&mut self, text: &str, signature: Option<String>) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
-        // 空 text 带签名 - 暂存
+        // Empty text with signature - buffer
         if text.is_empty() {
             if signature.is_some() {
                 self.state.set_trailing_signature(signature);
@@ -395,7 +414,7 @@ impl<'a> PartProcessor<'a> {
             return chunks;
         }
 
-        // 处理之前的 trailingSignature
+        // Handle previous trailingSignature
         if self.state.has_trailing_signature() {
             chunks.extend(self.state.end_block());
             if let Some(trailing_sig) = self.state.trailing_signature.take() {
@@ -407,20 +426,29 @@ impl<'a> PartProcessor<'a> {
                         "content_block": { "type": "thinking", "thinking": "" }
                     }),
                 ));
-                chunks.push(self.state.emit_delta("thinking_delta", json!({ "thinking": "" })));
-                chunks.push(self.state.emit_delta("signature_delta", json!({ "signature": trailing_sig })));
+                chunks.push(
+                    self.state
+                        .emit_delta("thinking_delta", json!({ "thinking": "" })),
+                );
+                chunks.push(
+                    self.state
+                        .emit_delta("signature_delta", json!({ "signature": trailing_sig })),
+                );
                 chunks.extend(self.state.end_block());
             }
         }
 
-        // 非空 text 带签名 - 立即处理
+        // Non-empty text with signature - process immediately
         if signature.is_some() {
-            // 2. 开始新 text 块并发送内容
-            chunks.extend(self.state.start_block(BlockType::Text, json!({ "type": "text", "text": "" })));
+            // 2. Start new text block and send content
+            chunks.extend(
+                self.state
+                    .start_block(BlockType::Text, json!({ "type": "text", "text": "" })),
+            );
             chunks.push(self.state.emit_delta("text_delta", json!({ "text": text })));
             chunks.extend(self.state.end_block());
 
-            // 输出空 thinking 块承载签名
+            // Output empty thinking block to carry signature
             chunks.push(self.state.emit(
                 "content_block_start",
                 json!({
@@ -429,16 +457,25 @@ impl<'a> PartProcessor<'a> {
                     "content_block": { "type": "thinking", "thinking": "" }
                 }),
             ));
-            chunks.push(self.state.emit_delta("thinking_delta", json!({ "thinking": "" })));
-            chunks.push(self.state.emit_delta("signature_delta", json!({ "signature": signature.unwrap() })));
+            chunks.push(
+                self.state
+                    .emit_delta("thinking_delta", json!({ "thinking": "" })),
+            );
+            chunks.push(self.state.emit_delta(
+                "signature_delta",
+                json!({ "signature": signature.unwrap() }),
+            ));
             chunks.extend(self.state.end_block());
 
             return chunks;
         }
 
-        // 普通 text (无签名)
+        // Normal text (no signature)
         if self.state.current_block_type() != BlockType::Text {
-            chunks.extend(self.state.start_block(BlockType::Text, json!({ "type": "text", "text": "" })));
+            chunks.extend(
+                self.state
+                    .start_block(BlockType::Text, json!({ "type": "text", "text": "" })),
+            );
         }
 
         chunks.push(self.state.emit_delta("text_delta", json!({ "text": text })));
@@ -446,23 +483,31 @@ impl<'a> PartProcessor<'a> {
         chunks
     }
 
-    /// 处理 FunctionCall
-    /// 处理 FunctionCall
-    fn process_function_call(&mut self, fc: &FunctionCall, signature: Option<String>) -> Vec<Bytes> {
+    /// Process FunctionCall
+    /// Process FunctionCall
+    fn process_function_call(
+        &mut self,
+        fc: &FunctionCall,
+        signature: Option<String>,
+    ) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
         self.state.mark_tool_used();
 
         let tool_id = fc.id.clone().unwrap_or_else(|| {
-            format!("{}-{}", fc.name, crate::proxy::common::utils::generate_random_id())
+            format!(
+                "{}-{}",
+                fc.name,
+                crate::proxy::common::utils::generate_random_id()
+            )
         });
 
-        // 1. 发送 content_block_start (input 为空对象)
+        // 1. Emit content_block_start (input is empty object)
         let mut tool_use = json!({
             "type": "tool_use",
             "id": tool_id,
             "name": fc.name,
-            "input": {} // 必须为空，参数通过 delta 发送
+            "input": {} // Must be empty, args sent via delta
         });
 
         if let Some(sig) = signature {
@@ -471,16 +516,16 @@ impl<'a> PartProcessor<'a> {
 
         chunks.extend(self.state.start_block(BlockType::Function, tool_use));
 
-        // 2. 发送 input_json_delta (完整的参数 JSON 字符串)
+        // 2. Emit input_json_delta (complete args JSON string)
         if let Some(args) = &fc.args {
             let json_str = serde_json::to_string(args).unwrap_or_else(|_| "{}".to_string());
-            chunks.push(self.state.emit_delta(
-                "input_json_delta",
-                json!({ "partial_json": json_str })
-            ));
+            chunks.push(
+                self.state
+                    .emit_delta("input_json_delta", json!({ "partial_json": json_str })),
+            );
         }
 
-        // 3. 结束块
+        // 3. End block
         chunks.extend(self.state.end_block());
 
         chunks
@@ -518,11 +563,11 @@ mod tests {
     fn test_process_function_call_deltas() {
         let mut state = StreamingState::new();
         let mut processor = PartProcessor::new(&mut state);
-        
+
         let fc = FunctionCall {
             name: "test_tool".to_string(),
             args: Some(json!({"arg": "value"})),
-            id: Some("call_123".to_string())
+            id: Some("call_123".to_string()),
         };
 
         // Create a dummy GeminiPart with function_call
@@ -536,7 +581,8 @@ mod tests {
         };
 
         let chunks = processor.process(&part);
-        let output = chunks.iter()
+        let output = chunks
+            .iter()
             .map(|b| String::from_utf8(b.to_vec()).unwrap())
             .collect::<Vec<_>>()
             .join("");
@@ -552,7 +598,7 @@ mod tests {
         assert!(output.contains(r#""type":"input_json_delta""#));
         // partial_json should contain escaped JSON string
         assert!(output.contains(r#"partial_json":"{\"arg\":\"value\"}"#));
-        
+
         // 3. content_block_stop
         assert!(output.contains(r#""type":"content_block_stop""#));
     }

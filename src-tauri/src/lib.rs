@@ -1,15 +1,15 @@
+mod commands;
+pub mod error;
 mod models;
 mod modules;
-mod commands;
+mod proxy; // Proxy service module
 mod utils;
-mod proxy;  // 反代服务模块
-pub mod error;
 
-use tauri::Manager;
 use modules::logger;
-use tracing::{info, error};
+use tauri::Manager;
+use tracing::{error, info};
 
-// 测试命令
+// Test command
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -17,9 +17,9 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化日志
+    // Initialize logger
     logger::init_logger();
-    
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -29,41 +29,43 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = app.get_webview_window("main")
-                .map(|window| {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    #[cfg(target_os = "macos")]
-                    app.set_activation_policy(tauri::ActivationPolicy::Regular).unwrap_or(());
-                });
+            let _ = app.get_webview_window("main").map(|window| {
+                let _ = window.show();
+                let _ = window.set_focus();
+                #[cfg(target_os = "macos")]
+                app.set_activation_policy(tauri::ActivationPolicy::Regular)
+                    .unwrap_or(());
+            });
         }))
         .manage(commands::proxy::ProxyServiceState::new())
         .setup(|app| {
             info!("Setup starting...");
             modules::tray::create_tray(app.handle())?;
             info!("Tray created");
-            
-            // 自动启动反代服务
+
+            // Auto-start proxy service
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                // 加载配置
+                // Load config
                 if let Ok(config) = modules::config::load_app_config() {
                     if config.proxy.auto_start {
                         let state = handle.state::<commands::proxy::ProxyServiceState>();
-                        // 尝试启动服务
+                        // Try to start service
                         if let Err(e) = commands::proxy::start_proxy_service(
                             config.proxy,
                             state,
                             handle.clone(),
-                        ).await {
-                            error!("自动启动反代服务失败: {}", e);
+                        )
+                        .await
+                        {
+                            error!("Failed to auto-start proxy service: {}", e);
                         } else {
-                            info!("反代服务自动启动成功");
+                            info!("Proxy service auto-started successfully");
                         }
                     }
                 }
             });
-            
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -72,27 +74,30 @@ pub fn run() {
                 #[cfg(target_os = "macos")]
                 {
                     use tauri::Manager;
-                    window.app_handle().set_activation_policy(tauri::ActivationPolicy::Accessory).unwrap_or(());
+                    window
+                        .app_handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory)
+                        .unwrap_or(());
                 }
                 api.prevent_close();
             }
         })
         .invoke_handler(tauri::generate_handler![
             greet,
-            // 账号管理命令
+            // Account management commands
             commands::list_accounts,
             commands::add_account,
             commands::delete_account,
             commands::delete_accounts,
             commands::switch_account,
             commands::get_current_account,
-            // 配额命令
+            // Quota commands
             commands::fetch_account_quota,
             commands::refresh_all_quotas,
-            // 配置命令
+            // Config commands
             commands::load_config,
             commands::save_config,
-            // 新增命令
+            // New commands
             commands::prepare_oauth_url,
             commands::start_oauth_login,
             commands::complete_oauth_login,
@@ -108,7 +113,7 @@ pub fn run() {
             commands::show_main_window,
             commands::get_antigravity_path,
             commands::check_for_updates,
-            // 反代服务命令
+            // Proxy service commands
             commands::proxy::start_proxy_service,
             commands::proxy::stop_proxy_service,
             commands::proxy::get_proxy_status,
@@ -116,7 +121,7 @@ pub fn run() {
             commands::proxy::generate_api_key,
             commands::proxy::reload_proxy_accounts,
             commands::proxy::update_model_mapping,
-            // Autostart 命令
+            // Autostart commands
             commands::autostart::toggle_auto_launch,
             commands::autostart::is_auto_launch_enabled,
         ])

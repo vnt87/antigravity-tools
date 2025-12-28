@@ -1,10 +1,10 @@
-// Claude 非流式响应转换 (Gemini → Claude)
-// 对应 NonStreamingProcessor
+// Claude Non-streaming Response Transformation (Gemini -> Claude)
+// Corresponds to NonStreamingProcessor
 
 use super::models::*;
 use super::utils::to_claude_usage;
 
-/// 非流式响应处理器
+/// Non-streaming Response Processor
 pub struct NonStreamingProcessor {
     content_blocks: Vec<ContentBlock>,
     text_builder: String,
@@ -26,9 +26,9 @@ impl NonStreamingProcessor {
         }
     }
 
-    /// 处理 Gemini 响应并转换为 Claude 响应
+    /// Process Gemini response and convert to Claude response
     pub fn process(&mut self, gemini_response: &GeminiResponse) -> ClaudeResponse {
-        // 获取 parts
+        // Get parts
         let empty_parts = vec![];
         let parts = gemini_response
             .candidates
@@ -38,16 +38,16 @@ impl NonStreamingProcessor {
             .map(|content| &content.parts)
             .unwrap_or(&empty_parts);
 
-        // 处理所有 parts
+        // Process all parts
         for part in parts {
             self.process_part(part);
         }
 
-        // 刷新剩余内容
+        // Flush remaining content
         self.flush_thinking();
         self.flush_text();
 
-        // 处理 trailingSignature (空 text 带签名)
+        // Handle trailingSignature (empty text with signature)
         if let Some(signature) = self.trailing_signature.take() {
             self.content_blocks.push(ContentBlock::Thinking {
                 thinking: String::new(),
@@ -55,20 +55,20 @@ impl NonStreamingProcessor {
             });
         }
 
-        // 构建响应
+        // Build response
         self.build_response(gemini_response)
     }
 
-    /// 处理单个 part
+    /// Process single part
     fn process_part(&mut self, part: &GeminiPart) {
         let signature = part.thought_signature.clone();
 
-        // 1. FunctionCall 处理
+        // 1. FunctionCall processing
         if let Some(fc) = &part.function_call {
             self.flush_thinking();
             self.flush_text();
 
-            // 处理 trailingSignature (B4/C3 场景)
+            // Handle trailingSignature (B4/C3 scenario)
             if let Some(trailing_sig) = self.trailing_signature.take() {
                 self.content_blocks.push(ContentBlock::Thinking {
                     thinking: String::new(),
@@ -78,7 +78,7 @@ impl NonStreamingProcessor {
 
             self.has_tool_call = true;
 
-            // 生成 tool_use id
+            // Generate tool_use id
             let tool_id = fc.id.clone().unwrap_or_else(|| {
                 format!(
                     "{}-{}",
@@ -94,7 +94,7 @@ impl NonStreamingProcessor {
                 signature: None,
             };
 
-            // 只使用 FC 自己的签名
+            // Only use FC's own signature
             if let ContentBlock::ToolUse { signature: sig, .. } = &mut tool_use {
                 *sig = signature;
             }
@@ -103,13 +103,13 @@ impl NonStreamingProcessor {
             return;
         }
 
-        // 2. Text 处理
+        // 2. Text processing
         if let Some(text) = &part.text {
             if part.thought.unwrap_or(false) {
                 // Thinking part
                 self.flush_text();
 
-                // 处理 trailingSignature
+                // Handle trailingSignature
                 if let Some(trailing_sig) = self.trailing_signature.take() {
                     self.flush_thinking();
                     self.content_blocks.push(ContentBlock::Thinking {
@@ -123,9 +123,9 @@ impl NonStreamingProcessor {
                     self.thinking_signature = signature;
                 }
             } else {
-                // 普通 Text
+                // Normal Text
                 if text.is_empty() {
-                    // 空 text 带签名 - 暂存到 trailingSignature
+                    // Empty text with signature - buffer to trailingSignature
                     if signature.is_some() {
                         self.trailing_signature = signature;
                     }
@@ -134,7 +134,7 @@ impl NonStreamingProcessor {
 
                 self.flush_thinking();
 
-                // 处理之前的 trailingSignature
+                // Handle previous trailingSignature
                 if let Some(trailing_sig) = self.trailing_signature.take() {
                     self.flush_text();
                     self.content_blocks.push(ContentBlock::Thinking {
@@ -145,7 +145,7 @@ impl NonStreamingProcessor {
 
                 self.text_builder.push_str(text);
 
-                // 非空 text 带签名 - 立即刷新并输出空 thinking 块
+                // Non-empty text with signature - flush immediately and output empty thinking block
                 if let Some(sig) = signature {
                     self.flush_text();
                     self.content_blocks.push(ContentBlock::Thinking {
@@ -156,10 +156,10 @@ impl NonStreamingProcessor {
             }
         }
 
-        // 3. InlineData (Image) 处理
+        // 3. InlineData (Image) processing
         if let Some(img) = &part.inline_data {
             self.flush_thinking();
-            
+
             let mime_type = &img.mime_type;
             let data = &img.data;
             if !data.is_empty() {
@@ -170,7 +170,7 @@ impl NonStreamingProcessor {
         }
     }
 
-    /// 刷新 text builder
+    /// Flush text builder
     fn flush_text(&mut self) {
         if self.text_builder.is_empty() {
             return;
@@ -182,9 +182,9 @@ impl NonStreamingProcessor {
         self.text_builder.clear();
     }
 
-    /// 刷新 thinking builder
+    /// Flush thinking builder
     fn flush_thinking(&mut self) {
-        // 如果既没有内容也没有签名，直接返回
+        // If neither content nor signature, return directly
         if self.thinking_builder.is_empty() && self.thinking_signature.is_none() {
             return;
         }
@@ -192,11 +192,14 @@ impl NonStreamingProcessor {
         let thinking = self.thinking_builder.clone();
         let signature = self.thinking_signature.take();
 
-        self.content_blocks.push(ContentBlock::Thinking { thinking, signature });
+        self.content_blocks.push(ContentBlock::Thinking {
+            thinking,
+            signature,
+        });
         self.thinking_builder.clear();
     }
 
-    /// 构建最终响应
+    /// Build final response
     fn build_response(&self, gemini_response: &GeminiResponse) -> ClaudeResponse {
         let finish_reason = gemini_response
             .candidates
@@ -222,16 +225,12 @@ impl NonStreamingProcessor {
             });
 
         ClaudeResponse {
-            id: gemini_response
-                .response_id
-                .clone()
-                .unwrap_or_else(|| format!("msg_{}", crate::proxy::common::utils::generate_random_id())),
+            id: gemini_response.response_id.clone().unwrap_or_else(|| {
+                format!("msg_{}", crate::proxy::common::utils::generate_random_id())
+            }),
             type_: "message".to_string(),
             role: "assistant".to_string(),
-            model: gemini_response
-                .model_version
-                .clone()
-                .unwrap_or_default(),
+            model: gemini_response.model_version.clone().unwrap_or_default(),
             content: self.content_blocks.clone(),
             stop_reason: stop_reason.to_string(),
             stop_sequence: None,
@@ -240,7 +239,7 @@ impl NonStreamingProcessor {
     }
 }
 
-/// 转换 Gemini 响应为 Claude 响应 (公共接口)
+/// Transform Gemini response to Claude response (public interface)
 pub fn transform_response(gemini_response: &GeminiResponse) -> Result<ClaudeResponse, String> {
     let mut processor = NonStreamingProcessor::new();
     Ok(processor.process(gemini_response))
@@ -333,7 +332,10 @@ mod tests {
         assert_eq!(claude_resp.content.len(), 2);
 
         match &claude_resp.content[0] {
-            ContentBlock::Thinking { thinking, signature } => {
+            ContentBlock::Thinking {
+                thinking,
+                signature,
+            } => {
                 assert_eq!(thinking, "Let me think...");
                 assert_eq!(signature.as_deref(), Some("sig123"));
             }

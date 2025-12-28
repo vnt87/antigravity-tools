@@ -1,16 +1,16 @@
 use serde_json::Value;
 
-/// 使用 Antigravity 的 loadCodeAssist API 获取 project_id
-/// 这是获取 cloudaicompanionProject 的正确方式
+/// Use Antigravity's loadCodeAssist API to get project_id
+/// This is the correct way to get cloudaicompanionProject
 pub async fn fetch_project_id(access_token: &str) -> Result<String, String> {
     let url = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
-    
+
     let request_body = serde_json::json!({
         "metadata": {
             "ideType": "ANTIGRAVITY"
         }
     });
-    
+
     let client = crate::utils::http::create_client(30);
     let response = client
         .post(url)
@@ -21,43 +21,49 @@ pub async fn fetch_project_id(access_token: &str) -> Result<String, String> {
         .json(&request_body)
         .send()
         .await
-        .map_err(|e| format!("loadCodeAssist 请求失败: {}", e))?;
-    
+        .map_err(|e| format!("loadCodeAssist request failed: {}", e))?;
+
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(format!("loadCodeAssist 返回错误 {}: {}", status, body));
+        return Err(format!(
+            "loadCodeAssist returned error {}: {}",
+            status, body
+        ));
     }
-    
-    let data: Value = response.json()
+
+    let data: Value = response
+        .json()
         .await
-        .map_err(|e| format!("解析响应失败: {}", e))?;
-    
-    // 提取 cloudaicompanionProject
-    if let Some(project_id) = data.get("cloudaicompanionProject")
-        .and_then(|v| v.as_str()) {
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    // Extract cloudaicompanionProject
+    if let Some(project_id) = data.get("cloudaicompanionProject").and_then(|v| v.as_str()) {
         return Ok(project_id.to_string());
     }
-    
-    // 如果没有返回 project_id，说明账号无资格，使用内置随机生成逻辑作为兜底
+
+    // If project_id is not returned, it means the account is not eligible, use built-in random generation logic as a fallback
     let mock_id = generate_mock_project_id();
-    tracing::warn!("账号无资格获取官方 cloudaicompanionProject，将使用随机生成的 Project ID 作为兜底: {}", mock_id);
+    tracing::warn!(
+        "Account not eligible for official cloudaicompanionProject, using randomly generated Project ID as fallback: {}",
+        mock_id
+    );
     Ok(mock_id)
 }
 
-/// 生成随机 project_id（当无法从 API 获取时使用）
-/// 格式：{形容词}-{名词}-{5位随机字符}
+/// Generate random project_id (used when unable to get from API)
+/// Format: {adjective}-{noun}-{5 random characters}
 pub fn generate_mock_project_id() -> String {
     use rand::Rng;
-    
+
     let adjectives = ["useful", "bright", "swift", "calm", "bold"];
     let nouns = ["fuze", "wave", "spark", "flow", "core"];
-    
+
     let mut rng = rand::thread_rng();
     let adj = adjectives[rng.gen_range(0..adjectives.len())];
     let noun = nouns[rng.gen_range(0..nouns.len())];
-    
-    // 生成5位随机字符（base36）
+
+    // Generate 5 random characters (base36)
     let random_num: String = (0..5)
         .map(|_| {
             let chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -65,6 +71,6 @@ pub fn generate_mock_project_id() -> String {
             chars.chars().nth(idx).unwrap()
         })
         .collect();
-    
+
     format!("{}-{}-{}", adj, noun, random_num)
 }
