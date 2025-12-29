@@ -1,12 +1,13 @@
-// Claude Streaming Response Transformation (Gemini SSE -> Claude SSE)
-// Corresponds to StreamingState + PartProcessor
+// Claude 流式响应转换 (Gemini SSE → Claude SSE)
+// 对应 StreamingState + PartProcessor
 
 use super::models::*;
 use super::utils::to_claude_usage;
+use crate::proxy::mappers::signature_store::store_thought_signature;
 use bytes::Bytes;
 use serde_json::json;
 
-/// Block Type Enum
+/// 块类型枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockType {
     None,
@@ -15,7 +16,7 @@ pub enum BlockType {
     Function,
 }
 
-/// Signature Manager
+/// 签名管理器
 pub struct SignatureManager {
     pending: Option<String>,
 }
@@ -40,15 +41,17 @@ impl SignatureManager {
     }
 }
 
-/// Streaming State Machine
+/// 流式状态机
 pub struct StreamingState {
     block_type: BlockType,
-    block_index: usize,
+    pub block_index: usize,
     pub message_start_sent: bool,
     pub message_stop_sent: bool,
     used_tool: bool,
     signatures: SignatureManager,
     trailing_signature: Option<String>,
+    pub web_search_query: Option<String>,
+    pub grounding_chunks: Option<Vec<serde_json::Value>>,
 }
 
 impl StreamingState {
@@ -61,10 +64,12 @@ impl StreamingState {
             used_tool: false,
             signatures: SignatureManager::new(),
             trailing_signature: None,
+            web_search_query: None,
+            grounding_chunks: None,
         }
     }
 
-    /// Emit SSE event
+    /// 发送 SSE 事件
     pub fn emit(&self, event_type: &str, data: serde_json::Value) -> Bytes {
         let sse = format!(
             "event: {}\ndata: {}\n\n",
@@ -74,7 +79,7 @@ impl StreamingState {
         Bytes::from(sse)
     }
 
-    /// Emit message_start event
+    /// 发送 message_start 事件
     pub fn emit_message_start(&mut self, raw_json: &serde_json::Value) -> Bytes {
         if self.message_start_sent {
             return Bytes::new();
@@ -115,7 +120,7 @@ impl StreamingState {
         result
     }
 
-    /// Start new content block
+    /// 开始新的内容块
     pub fn start_block(
         &mut self,
         block_type: BlockType,
@@ -139,7 +144,7 @@ impl StreamingState {
         chunks
     }
 
-    /// End current content block
+    /// 结束当前内容块
     pub fn end_block(&mut self) -> Vec<Bytes> {
         if self.block_type == BlockType::None {
             return vec![];
@@ -147,7 +152,7 @@ impl StreamingState {
 
         let mut chunks = Vec::new();
 
-        // Emit buffered signature when Thinking block ends
+        // Thinking 块结束时发送暂存的签名
         if self.block_type == BlockType::Thinking && self.signatures.has_pending() {
             if let Some(signature) = self.signatures.consume() {
                 chunks.push(self.emit_delta("signature_delta", json!({ "signature": signature })));
@@ -168,7 +173,7 @@ impl StreamingState {
         chunks
     }
 
-    /// Emit delta event
+    /// 发送 delta 事件
     pub fn emit_delta(&self, delta_type: &str, delta_content: serde_json::Value) -> Bytes {
         let mut delta = json!({ "type": delta_type });
         if let serde_json::Value::Object(map) = delta_content {
@@ -187,7 +192,7 @@ impl StreamingState {
         )
     }
 
-    /// Emit finish event
+    /// 发送结束事件
     pub fn emit_finish(
         &mut self,
         finish_reason: Option<&str>,
@@ -195,10 +200,10 @@ impl StreamingState {
     ) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
-        // Close the last block
+        // 关闭最后一个块
         chunks.extend(self.end_block());
 
-        // Handle trailingSignature (PDF 776-778)
+        // 处理 trailingSignature (PDF 776-778)
         if let Some(signature) = self.trailing_signature.take() {
             chunks.push(self.emit(
                 "content_block_start",
@@ -220,7 +225,49 @@ impl StreamingState {
             self.block_index += 1;
         }
 
-        // Determine stop_reason
+        // 处理 grounding(web search) -> 转换为 Markdown 文本块
+        if self.web_search_query.is_some() || self.grounding_chunks.is_some() {
+            let mut grounding_text = String::new();
+            
+            // 1. 处理搜索词
+            if let Some(query) = &self.web_search_query {
+                if !query.is_empty() {
+                    grounding_text.push_str("\n\n---\n**🔍 已为您搜索：** ");
+                    grounding_text.push_str(query);
+                }
+            }
+
+            // 2. 处理来源链接
+            if let Some(chunks) = &self.grounding_chunks {
+                let mut links = Vec::new();
+                for (i, chunk) in chunks.iter().enumerate() {
+                    if let Some(web) = chunk.get("web") {
+                        let title = web.get("title").and_then(|v| v.as_str()).unwrap_or("网页来源");
+                        let uri = web.get("uri").and_then(|v| v.as_str()).unwrap_or("#");
+                        links.push(format!("[{}] [{}]({})", i + 1, title, uri));
+                    }
+                }
+                
+                if !links.is_empty() {
+                    grounding_text.push_str("\n\n**🌐 来源引文：**\n");
+                    grounding_text.push_str(&links.join("\n"));
+                }
+            }
+
+            if !grounding_text.is_empty() {
+                // 发送一个新的 text 块
+                chunks.push(self.emit("content_block_start", json!({
+                    "type": "content_block_start",
+                    "index": self.block_index,
+                    "content_block": { "type": "text", "text": "" }
+                })));
+                chunks.push(self.emit_delta("text_delta", json!({ "text": grounding_text })));
+                chunks.push(self.emit("content_block_stop", json!({ "type": "content_block_stop", "index": self.block_index })));
+                self.block_index += 1;
+            }
+        }
+
+        // 确定 stop_reason
         let stop_reason = if self.used_tool {
             "tool_use"
         } else if finish_reason == Some("MAX_TOKENS") {
@@ -229,10 +276,13 @@ impl StreamingState {
             "end_turn"
         };
 
-        let usage = usage_metadata.map(|u| to_claude_usage(u)).unwrap_or(Usage {
-            input_tokens: 0,
-            output_tokens: 0,
-        });
+        let usage = usage_metadata
+            .map(|u| to_claude_usage(u))
+            .unwrap_or(Usage {
+                input_tokens: 0,
+                output_tokens: 0,
+                server_tool_use: None,
+            });
 
         chunks.push(self.emit(
             "message_delta",
@@ -253,38 +303,38 @@ impl StreamingState {
         chunks
     }
 
-    /// Mark tool used
+    /// 标记使用了工具
     pub fn mark_tool_used(&mut self) {
         self.used_tool = true;
     }
 
-    /// Get current block type
+    /// 获取当前块类型
     pub fn current_block_type(&self) -> BlockType {
         self.block_type
     }
 
-    /// Get current block index
+    /// 获取当前块索引
     pub fn current_block_index(&self) -> usize {
         self.block_index
     }
 
-    /// Store signature
+    /// 存储签名
     pub fn store_signature(&mut self, signature: Option<String>) {
         self.signatures.store(signature);
     }
 
-    /// Set trailing signature
+    /// 设置 trailing signature
     pub fn set_trailing_signature(&mut self, signature: Option<String>) {
         self.trailing_signature = signature;
     }
 
-    /// Get trailing signature (check only)
+    /// 获取 trailing signature (仅用于检查)
     pub fn has_trailing_signature(&self) -> bool {
         self.trailing_signature.is_some()
     }
 }
 
-/// Part Processor
+/// Part 处理器
 pub struct PartProcessor<'a> {
     state: &'a mut StreamingState,
 }
@@ -294,14 +344,14 @@ impl<'a> PartProcessor<'a> {
         Self { state }
     }
 
-    /// Process single part
+    /// 处理单个 part
     pub fn process(&mut self, part: &GeminiPart) -> Vec<Bytes> {
         let mut chunks = Vec::new();
         let signature = part.thought_signature.clone();
 
-        // 1. FunctionCall processing
+        // 1. FunctionCall 处理
         if let Some(fc) = &part.function_call {
-            // Handle trailingSignature first (B4/C3 scenario)
+            // 先处理 trailingSignature (B4/C3 场景)
             if self.state.has_trailing_signature() {
                 chunks.extend(self.state.end_block());
                 if let Some(trailing_sig) = self.state.trailing_signature.take() {
@@ -329,18 +379,18 @@ impl<'a> PartProcessor<'a> {
             return chunks;
         }
 
-        // 2. Text processing
+        // 2. Text 处理
         if let Some(text) = &part.text {
             if part.thought.unwrap_or(false) {
                 // Thinking
                 chunks.extend(self.process_thinking(text, signature));
             } else {
-                // Normal Text
+                // 普通 Text
                 chunks.extend(self.process_text(text, signature));
             }
         }
 
-        // 3. InlineData (Image) processing
+        // 3. InlineData (Image) 处理
         if let Some(img) = &part.inline_data {
             let mime_type = &img.mime_type;
             let data = &img.data;
@@ -353,11 +403,11 @@ impl<'a> PartProcessor<'a> {
         chunks
     }
 
-    /// Process Thinking
+    /// 处理 Thinking
     fn process_thinking(&mut self, text: &str, signature: Option<String>) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
-        // Handle previous trailingSignature
+        // 处理之前的 trailingSignature
         if self.state.has_trailing_signature() {
             chunks.extend(self.state.end_block());
             if let Some(trailing_sig) = self.state.trailing_signature.take() {
@@ -381,7 +431,7 @@ impl<'a> PartProcessor<'a> {
             }
         }
 
-        // Start or continue thinking block
+        // 开始或继续 thinking 块
         if self.state.current_block_type() != BlockType::Thinking {
             chunks.extend(self.state.start_block(
                 BlockType::Thinking,
@@ -396,17 +446,17 @@ impl<'a> PartProcessor<'a> {
             );
         }
 
-        // Buffer signature
+        // 暂存签名
         self.state.store_signature(signature);
 
         chunks
     }
 
-    /// Process Normal Text
+    /// 处理普通 Text
     fn process_text(&mut self, text: &str, signature: Option<String>) -> Vec<Bytes> {
         let mut chunks = Vec::new();
 
-        // Empty text with signature - buffer
+        // 空 text 带签名 - 暂存
         if text.is_empty() {
             if signature.is_some() {
                 self.state.set_trailing_signature(signature);
@@ -414,7 +464,7 @@ impl<'a> PartProcessor<'a> {
             return chunks;
         }
 
-        // Handle previous trailingSignature
+        // 处理之前的 trailingSignature
         if self.state.has_trailing_signature() {
             chunks.extend(self.state.end_block());
             if let Some(trailing_sig) = self.state.trailing_signature.take() {
@@ -438,9 +488,9 @@ impl<'a> PartProcessor<'a> {
             }
         }
 
-        // Non-empty text with signature - process immediately
+        // 非空 text 带签名 - 立即处理
         if signature.is_some() {
-            // 2. Start new text block and send content
+            // 2. 开始新 text 块并发送内容
             chunks.extend(
                 self.state
                     .start_block(BlockType::Text, json!({ "type": "text", "text": "" })),
@@ -448,7 +498,7 @@ impl<'a> PartProcessor<'a> {
             chunks.push(self.state.emit_delta("text_delta", json!({ "text": text })));
             chunks.extend(self.state.end_block());
 
-            // Output empty thinking block to carry signature
+            // 输出空 thinking 块承载签名
             chunks.push(self.state.emit(
                 "content_block_start",
                 json!({
@@ -470,7 +520,7 @@ impl<'a> PartProcessor<'a> {
             return chunks;
         }
 
-        // Normal text (no signature)
+        // 普通 text (无签名)
         if self.state.current_block_type() != BlockType::Text {
             chunks.extend(
                 self.state
@@ -483,8 +533,7 @@ impl<'a> PartProcessor<'a> {
         chunks
     }
 
-    /// Process FunctionCall
-    /// Process FunctionCall
+    /// Process FunctionCall and capture signature for global storage
     fn process_function_call(
         &mut self,
         fc: &FunctionCall,
@@ -502,21 +551,27 @@ impl<'a> PartProcessor<'a> {
             )
         });
 
-        // 1. Emit content_block_start (input is empty object)
+        // 1. 发送 content_block_start (input 为空对象)
         let mut tool_use = json!({
             "type": "tool_use",
             "id": tool_id,
             "name": fc.name,
-            "input": {} // Must be empty, args sent via delta
+            "input": {} // 必须为空，参数通过 delta 发送
         });
 
-        if let Some(sig) = signature {
+        if let Some(ref sig) = signature {
             tool_use["signature"] = json!(sig);
+            // Store signature to global storage for replay in subsequent requests
+            store_thought_signature(sig);
+            tracing::info!(
+                "[Claude-SSE] Captured thought_signature for function call (length: {})",
+                sig.len()
+            );
         }
 
         chunks.extend(self.state.start_block(BlockType::Function, tool_use));
 
-        // 2. Emit input_json_delta (complete args JSON string)
+        // 2. 发送 input_json_delta (完整的参数 JSON 字符串)
         if let Some(args) = &fc.args {
             let json_str = serde_json::to_string(args).unwrap_or_else(|_| "{}".to_string());
             chunks.push(
@@ -525,7 +580,7 @@ impl<'a> PartProcessor<'a> {
             );
         }
 
-        // 3. End block
+        // 3. 结束块
         chunks.extend(self.state.end_block());
 
         chunks

@@ -1,49 +1,47 @@
-// OpenAI Streaming Transformation
+// OpenAI 流式转换
 use bytes::{Bytes, BytesMut};
-use chrono::Utc;
 use futures::{Stream, StreamExt};
-use rand::Rng;
 use serde_json::{json, Value};
 use std::pin::Pin;
 use std::sync::{Mutex, OnceLock};
-use tracing::{debug, info};
+use chrono::Utc;
 use uuid::Uuid;
+use tracing::debug;
+use rand::Rng;
 
-// === Global ThoughtSignature Storage ===
-// Used to pass signature between streaming response and subsequent requests, avoiding embedding in user-visible text
+// === 全局 ThoughtSignature 存储 ===
+// 用于在流式响应和后续请求之间传递签名，避免嵌入到用户可见的文本中
 static GLOBAL_THOUGHT_SIG: OnceLock<Mutex<Option<String>>> = OnceLock::new();
 
 fn get_thought_sig_storage() -> &'static Mutex<Option<String>> {
     GLOBAL_THOUGHT_SIG.get_or_init(|| Mutex::new(None))
 }
 
-/// Save thoughtSignature to global storage
-/// Note: Only store if new signature is longer than existing one, to avoid short signature overwriting valid signature
+/// 保存 thoughtSignature 到全局存储
+/// 注意：只在新签名比现有签名更长时才存储，避免短签名覆盖有效签名
 pub fn store_thought_signature(sig: &str) {
     if let Ok(mut guard) = get_thought_sig_storage().lock() {
         let should_store = match &*guard {
-            None => true,                                 // No signature, store directly
-            Some(existing) => sig.len() > existing.len(), // Only store if new signature is longer
+            None => true, // 没有签名，直接存储
+            Some(existing) => sig.len() > existing.len(), // 只有新签名更长才存储
         };
-
+        
         if should_store {
-            tracing::info!(
-                "[ThoughtSig] Storing new signature (len: {}, replacing old len: {:?})",
-                sig.len(),
+            tracing::info!("[ThoughtSig] 存储新签名 (长度: {}，替换旧长度: {:?})", 
+                sig.len(), 
                 guard.as_ref().map(|s| s.len())
             );
             *guard = Some(sig.to_string());
         } else {
-            tracing::debug!(
-                "[ThoughtSig] Skipping short signature (new len: {}, existing len: {})",
-                sig.len(),
+            tracing::debug!("[ThoughtSig] 跳过短签名 (新长度: {}，现有长度: {})", 
+                sig.len(), 
                 guard.as_ref().map(|s| s.len()).unwrap_or(0)
             );
         }
     }
 }
 
-/// Get and clear globally stored thoughtSignature
+/// 获取并清除全局存储的 thoughtSignature
 pub fn take_thought_signature() -> Option<String> {
     if let Ok(mut guard) = get_thought_sig_storage().lock() {
         guard.take()
@@ -52,7 +50,7 @@ pub fn take_thought_signature() -> Option<String> {
     }
 }
 
-/// Get globally stored thoughtSignature (without clearing)
+/// 获取全局存储的 thoughtSignature（不清除）
 pub fn get_thought_signature() -> Option<String> {
     if let Ok(guard) = get_thought_sig_storage().lock() {
         guard.clone()
@@ -66,7 +64,7 @@ pub fn create_openai_sse_stream(
     model: String,
 ) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
     let mut buffer = BytesMut::new();
-
+    
     let stream = async_stream::stream! {
         while let Some(item) = gemini_stream.next().await {
             match item {
@@ -74,7 +72,7 @@ pub fn create_openai_sse_stream(
                     // Verbose logging for debugging image fragmentation
                     debug!("[OpenAI-SSE] Received chunk: {} bytes", bytes.len());
                     buffer.extend_from_slice(&bytes);
-
+                    
                     // Process complete lines from buffer
                     while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
                         let line_raw = buffer.split_to(pos + 1);
@@ -105,27 +103,18 @@ pub fn create_openai_sse_stream(
                                     let parts = candidate.and_then(|c| c.get("content")).and_then(|c| c.get("parts")).and_then(|p| p.as_array());
 
                                     let mut content_out = String::new();
-
+                                    
                                     if let Some(parts_list) = parts {
                                         for part in parts_list {
                                             if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
                                                 content_out.push_str(text);
                                             }
                                             // Capture thought (Thinking Models)
-                                            if let Some(thought) = part.get("thought").and_then(|t| t.as_bool()) {
-                                                // Currently gemini-2.0-flash-thinking-exp returns thought in "text" but with "thought": true metadata?
-                                                // Or is it a separate part?
-                                                // The official docs say: parts: [{ text: "..." }, { thought: "..." }] for some;
-                                                // but usually it's just text. However, experimental models might use a "thought" field.
-                                                // Let's check for "thought" string field first.
-                                            }
                                             if let Some(thought_text) = part.get("thought").and_then(|t| t.as_str()) {
                                                  content_out.push_str(thought_text);
                                             }
-                                            // Capture thoughtSignature (Required for Gemini 3 tool calls)
-                                            // Store to global state, no longer embed in user-visible text
+                                            // 捕获 thoughtSignature (Gemini 3 工具调用必需)
                                             if let Some(sig) = part.get("thoughtSignature").or(part.get("thought_signature")).and_then(|s| s.as_str()) {
-                                                tracing::info!("[OpenAI-SSE] Captured thoughtSignature (len: {})", sig.len());
                                                 store_thought_signature(sig);
                                             }
 
@@ -133,21 +122,49 @@ pub fn create_openai_sse_stream(
                                                 let mime_type = img.get("mimeType").and_then(|v| v.as_str()).unwrap_or("image/png");
                                                 let data = img.get("data").and_then(|v| v.as_str()).unwrap_or("");
                                                 if !data.is_empty() {
-                                                    info!("[OpenAI-SSE] Detected image data: {} chars (base64)", data.len());
                                                     content_out.push_str(&format!("![image](data:{};base64,{})", mime_type, data));
                                                 }
                                             }
                                         }
                                     }
 
-                                    if content_out.is_empty() {
-                                        // Skip empty chunks if no text or image was found
-                                        // Unless it has a finish reason
-                                        if actual_data.get("candidates").and_then(|c| c.get(0)).and_then(|c| c.get("finishReason")).is_none() {
-                                            continue;
+                                    // 处理联网搜索引文 (Grounding Metadata) - 流式
+                                    if let Some(grounding) = candidate.and_then(|c| c.get("groundingMetadata")) {
+                                        let mut grounding_text = String::new();
+                                        if let Some(queries) = grounding.get("webSearchQueries").and_then(|q| q.as_array()) {
+                                            let query_list: Vec<&str> = queries.iter().filter_map(|v| v.as_str()).collect();
+                                            if !query_list.is_empty() {
+                                                grounding_text.push_str("\n\n---\n**🔍 已为您搜索：** ");
+                                                grounding_text.push_str(&query_list.join(", "));
+                                            }
+                                        }
+
+                                        if let Some(chunks) = grounding.get("groundingChunks").and_then(|c| c.as_array()) {
+                                            let mut links = Vec::new();
+                                            for (i, chunk) in chunks.iter().enumerate() {
+                                                if let Some(web) = chunk.get("web") {
+                                                    let title = web.get("title").and_then(|v| v.as_str()).unwrap_or("网页来源");
+                                                    let uri = web.get("uri").and_then(|v| v.as_str()).unwrap_or("#");
+                                                    links.push(format!("[{}] [{}]({})", i + 1, title, uri));
+                                                }
+                                            }
+                                            if !links.is_empty() {
+                                                grounding_text.push_str("\n\n**🌐 来源引文：**\n");
+                                                grounding_text.push_str(&links.join("\n"));
+                                            }
+                                        }
+                                        if !grounding_text.is_empty() {
+                                            content_out.push_str(&grounding_text);
                                         }
                                     }
 
+                                    if content_out.is_empty() {
+                                        // Skip empty chunks if no text/grounding was found
+                                        if candidate.and_then(|c| c.get("finishReason")).is_none() {
+                                            continue;
+                                        }
+                                    }
+                                        
                                     // Extract finish reason
                                     let finish_reason = candidate.and_then(|c| c.get("finishReason"))
                                         .and_then(|f| f.as_str())
@@ -199,7 +216,7 @@ pub fn create_legacy_sse_stream(
     model: String,
 ) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
     let mut buffer = BytesMut::new();
-
+    
     // Generate constant alphanumeric ID (mimics OpenAI base62 format)
     let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::thread_rng();
@@ -210,8 +227,8 @@ pub fn create_legacy_sse_stream(
         })
         .collect();
     let stream_id = format!("cmpl-{}", random_str);
-    let created_ts = Utc::now().timestamp();
-
+    let created_ts = Utc::now().timestamp(); 
+    
     let stream = async_stream::stream! {
         while let Some(item) = gemini_stream.next().await {
             match item {
@@ -229,7 +246,7 @@ pub fn create_legacy_sse_stream(
 
                                 if let Ok(mut json) = serde_json::from_str::<Value>(json_part) {
                                     let actual_data = if let Some(inner) = json.get_mut("response").map(|v| v.take()) { inner } else { json };
-
+                                    
                                     let mut content_out = String::new();
                                     if let Some(candidates) = actual_data.get("candidates").and_then(|c| c.as_array()) {
                                         if let Some(parts) = candidates.get(0).and_then(|c| c.get("content")).and_then(|c| c.get("parts")).and_then(|p| p.as_array()) {
@@ -241,8 +258,8 @@ pub fn create_legacy_sse_stream(
                                                 if let Some(thought_text) = part.get("thought").and_then(|t| t.as_str()) {
                                                      content_out.push_str(thought_text);
                                                 }
-                                                // Capture thoughtSignature
-                                                // Capture thoughtSignature to global storage
+                                                // 捕获 thoughtSignature
+                                                // 捕获 thoughtSignature 到全局存储
                                                 if let Some(sig) = part.get("thoughtSignature").or(part.get("thought_signature")).and_then(|s| s.as_str()) {
                                                     store_thought_signature(sig);
                                                 }
@@ -279,7 +296,7 @@ pub fn create_legacy_sse_stream(
                                     });
 
                                     let json_str = serde_json::to_string(&legacy_chunk).unwrap_or_default();
-                                    tracing::info!("Legacy Stream Chunk: {}", json_str);
+                                    tracing::info!("Legacy Stream Chunk: {}", json_str); 
                                     let sse_out = format!("data: {}\n\n", json_str);
                                     yield Ok::<Bytes, String>(Bytes::from(sse_out));
                                 }
@@ -304,7 +321,7 @@ pub fn create_codex_sse_stream(
     model: String,
 ) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
     let mut buffer = BytesMut::new();
-
+    
     // Generate alphanumeric ID
     let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::thread_rng();
@@ -315,7 +332,7 @@ pub fn create_codex_sse_stream(
         })
         .collect();
     let response_id = format!("resp-{}", random_str);
-
+    
     let stream = async_stream::stream! {
         // 1. Emit response.created
         let created_ev = json!({
@@ -340,13 +357,13 @@ pub fn create_codex_sse_stream(
                         if let Ok(line_str) = std::str::from_utf8(&line_raw) {
                             let line = line_str.trim();
                             if line.is_empty() || !line.starts_with("data: ") { continue; }
-
+                            
                             let json_part = line.trim_start_matches("data: ").trim();
                             if json_part == "[DONE]" { continue; }
 
                             if let Ok(mut json) = serde_json::from_str::<Value>(json_part) {
                                 let actual_data = if let Some(inner) = json.get_mut("response").map(|v| v.take()) { inner } else { json };
-
+                                
                                 // Capture finish reason
                                 if let Some(candidates) = actual_data.get("candidates").and_then(|c| c.as_array()) {
                                     if let Some(candidate) = candidates.get(0) {
@@ -376,10 +393,10 @@ pub fn create_codex_sse_stream(
                                                     let clean_thought = thought_text.replace('"', "\"").replace('"', "\"");
                                                     delta_text.push_str(&clean_thought);
                                                 }
-                                                // Capture thoughtSignature (Required for Gemini 3 tool calls)
-                                                // Store to global state, no longer embed in user-visible text
+                                                // 捕获 thoughtSignature (Gemini 3 工具调用必需)
+                                                // 存储到全局状态，不再嵌入到用户可见的文本中
                                                 if let Some(sig) = part.get("thoughtSignature").or(part.get("thought_signature")).and_then(|s| s.as_str()) {
-                                                    tracing::info!("[Codex-SSE] Captured thoughtSignature (len: {})", sig.len());
+                                                    tracing::info!("[Codex-SSE] 捕获 thoughtSignature (长度: {})", sig.len());
                                                     store_thought_signature(sig);
                                                 }
                                                 // Handle function call in chunk with deduplication
@@ -390,13 +407,13 @@ pub fn create_codex_sse_stream(
 
                                                         let name = func_call.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
                                                         let args = func_call.get("args").unwrap_or(&json!({})).to_string();
-
+                                                        
                                                         // Stable ID generation based on hashed content to be consistent
                                                         let mut hasher = std::collections::hash_map::DefaultHasher::new();
                                                         use std::hash::{Hash, Hasher};
                                                         serde_json::to_string(func_call).unwrap_or_default().hash(&mut hasher);
                                                         let call_id = format!("call_{:x}", hasher.finish());
-
+                                                        
                                                         // Parse args once
                                                         let fallback_args = json!({});
                                                         let args_obj = func_call.get("args").unwrap_or(&fallback_args);
@@ -404,36 +421,36 @@ pub fn create_codex_sse_stream(
                                                         let args_str = args_obj.to_string();
 
                                                         let name_str = name.to_string();
-
+                                                        
                                                         // Determine event type based on tool name
-                                                        // Use Option to allow skipping tool calls in some cases
+                                                        // 使用 Option 来允许某些情况跳过工具调用
                                                         let maybe_item_added_ev: Option<Value> = if name_str == "shell" || name_str == "local_shell" {
                                                             // Map to local_shell_call
                                                             tracing::info!("[Debug] func_call: {}", serde_json::to_string(&func_call).unwrap_or_default());
                                                             tracing::info!("[Debug] args_obj: {}", serde_json::to_string(&args_obj).unwrap_or_default());
-
-                                                            // Parse command: support array format, string format, and empty args case
+                                                            
+                                                            // 解析命令：支持数组格式、字符串格式，以及空 args 情况
                                                             let cmd_vec: Vec<String> = if args_obj.as_object().map(|o| o.is_empty()).unwrap_or(true) {
-                                                                // Use silent success command when args is empty to avoid task interruption
-                                                                tracing::warn!("shell command args empty, using silent success command to continue flow");
+                                                                // args 为空时使用静默成功命令，避免任务中断
+                                                                tracing::warn!("shell command args 为空，使用静默成功命令继续流程");
                                                                 vec!["powershell.exe".to_string(), "-Command".to_string(), "exit 0".to_string()]
                                                             } else if let Some(arr) = args_obj.get("command").and_then(|v| v.as_array()) {
-                                                                // Array format
+                                                                // 数组格式
                                                                 arr.iter().filter_map(|v| v.as_str()).map(|s| s.to_string()).collect()
                                                             } else if let Some(cmd_str) = args_obj.get("command").and_then(|v| v.as_str()) {
-                                                                // String format
+                                                                // 字符串格式
                                                                 if cmd_str.contains(' ') {
                                                                     vec!["powershell.exe".to_string(), "-Command".to_string(), cmd_str.to_string()]
                                                                 } else {
                                                                     vec![cmd_str.to_string()]
                                                                 }
                                                             } else {
-                                                                // command field missing, using silent success command
-                                                                tracing::warn!("shell command missing command field, using silent success command");
+                                                                // command 字段缺失，使用静默成功命令
+                                                                tracing::warn!("shell command 缺少 command 字段，使用静默成功命令");
                                                                 vec!["powershell.exe".to_string(), "-Command".to_string(), "exit 0".to_string()]
                                                             };
-
-                                                            tracing::info!("Shell command parsed: {:?}", cmd_vec);
+                                                            
+                                                            tracing::info!("Shell 命令解析: {:?}", cmd_vec);
                                                             Some(json!({
                                                                 "type": "response.output_item.added",
                                                                 "item": {
@@ -474,12 +491,12 @@ pub fn create_codex_sse_stream(
                                                             }))
                                                         };
 
-                                                        // Only emit if there is an event
+                                                        // 只有在有事件时才发送
                                                         if let Some(item_added_ev) = maybe_item_added_ev {
                                                             yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&item_added_ev).unwrap())));
 
                                                         // Emit response.output_item.done (matching the added event)
-                                                        // Reuse same cmd_vec logic
+                                                        // 复用相同的 cmd_vec 逻辑
                                                         let item_done_ev = if name_str == "shell" || name_str == "local_shell" {
                                                             let cmd_vec_done: Vec<String> = if let Some(arr) = args_obj.get("command").and_then(|v| v.as_array()) {
                                                                 arr.iter()
@@ -534,7 +551,7 @@ pub fn create_codex_sse_stream(
                                                         };
 
                                                         yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&item_done_ev).unwrap())));
-                                                        } // Close if let Some(item_added_ev)
+                                                        } // 关闭 if let Some(item_added_ev)
                                                     }
                                                 }
                                             }
@@ -580,7 +597,7 @@ pub fn create_codex_sse_stream(
             // Try to find a JSON block containing "command"
             // Simple heuristic: look for { and }
             // We search for the *last* valid JSON block that has a "command" field, as the model might output reasoning first.
-
+            
             let mut detected_cmd_val = None;
             let mut detected_cmd_type = "unknown";
 
@@ -588,7 +605,7 @@ pub fn create_codex_sse_stream(
             let chars: Vec<char> = full_content.chars().collect();
             let mut depth = 0;
             let mut start_idx = 0;
-
+            
             // Scan for top-level JSON objects
             for (i, c) in chars.iter().enumerate() {
                 if *c == '{' {
@@ -612,7 +629,7 @@ pub fn create_codex_sse_stream(
                                                 detected_cmd_val = Some(cmd_val.clone());
                                             }
                                         }
-                                    }
+                                    } 
                                     // Case 2: "command": "shell" (String) and "args": { "command": "..." }
                                     // This matches the user's latest screenshot which failed SSOP.
                                     else if let Some(cmd_str) = cmd_val.as_str() {
@@ -634,21 +651,21 @@ pub fn create_codex_sse_stream(
                                 }
                             } else {
                                 // Fallback for malformed JSON (e.g. unescaped quotes)
-                                // Note: Use safe slicing method to avoid UTF-8 boundary panic
-                                if (json_str.contains("\"command\": \"shell\"") || json_str.contains("\"command\": \"local_shell\""))
+                                // 注意: 使用安全的切片方法避免 UTF-8 边界 panic
+                                if (json_str.contains("\"command\": \"shell\"") || json_str.contains("\"command\": \"local_shell\"")) 
                                    && (json_str.contains("\"argument\":") || json_str.contains("\"code\":")) {
-
+                                    
                                     let keys = ["\"argument\":", "\"code\":", "\"command\":"];
                                     for key in keys {
                                         if let Some(pos) = json_str.find(key) {
-                                            // Use safe get() method instead of direct indexing
+                                            // 使用安全的 get() 方法替代直接索引
                                             let slice_start = pos + key.len();
                                             if let Some(slice_after_key) = json_str.get(slice_start..) {
                                                 if let Some(quote_idx) = slice_after_key.find('"') {
                                                     let val_start_abs = slice_start + quote_idx + 1;
                                                     if let Some(last_quote_idx) = json_str.rfind('"') {
                                                         if last_quote_idx > val_start_abs {
-                                                            // Use get() to safely acquire substring
+                                                            // 使用 get() 安全获取子字符串
                                                             if let Some(raw_cmd) = json_str.get(val_start_abs..last_quote_idx) {
                                                                 detected_cmd_type = "shell";
                                                                 detected_cmd_val = Some(json!([raw_cmd]));
@@ -677,7 +694,7 @@ pub fn create_codex_sse_stream(
                      let call_id = format!("call_{:x}", hasher.finish());
 
                      let mut cmd_vec: Vec<String> = cmd_val.as_array().unwrap().iter().map(|v| v.as_str().unwrap_or("").to_string()).collect();
-
+                     
                      // Helper to ensure it runs in shell properly
                      // Problem: Model often outputs ["shell", "powershell", "-Command", ...]
                      // "shell" is not a valid executable on Windows. We must strip it if it's acting as a label.
@@ -703,7 +720,7 @@ pub fn create_codex_sse_stream(
                         }
                         use base64::Engine as _;
                         let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
-
+                        
                         vec!["powershell".to_string(), "-EncodedCommand".to_string(), b64]
                     };
 

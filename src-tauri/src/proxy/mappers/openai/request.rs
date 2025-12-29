@@ -1,16 +1,21 @@
-// OpenAI -> Gemini Request Transformation
+// OpenAI → Gemini 请求转换
 use super::models::*;
 use serde_json::{json, Value};
 use super::streaming::get_thought_signature;
 
 pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mapped_model: &str) -> Value {
+    // 将 OpenAI 工具转为 Value 数组以便探测
+    let tools_val = request.tools.as_ref().map(|list| {
+        list.iter().map(|v| v.clone()).collect::<Vec<_>>()
+    });
+
     // Resolve grounding config
-    let config = crate::proxy::mappers::common_utils::resolve_request_config(&request.model, mapped_model);
+    let config = crate::proxy::mappers::common_utils::resolve_request_config(&request.model, mapped_model, &tools_val);
 
     tracing::info!("[Debug] OpenAI Request: original='{}', mapped='{}', type='{}', has_image_config={}", 
         request.model, mapped_model, config.request_type, config.image_config.is_some());
     
-    // 1. Extract all System Messages and inject patches
+    // 1. 提取所有 System Message 并注入补丁
     let mut system_instructions: Vec<String> = request.messages.iter()
         .filter(|msg| msg.role == "system")
         .filter_map(|msg| {
@@ -29,7 +34,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         })
         .collect();
 
-    // Inject Codex/Coding Agent patch
+    // 注入 Codex/Coding Agent 补丁
     system_instructions.push("You are a coding agent. You MUST use the provided 'shell' tool to perform ANY filesystem operations (reading, writing, creating files). Do not output JSON code blocks for tool execution; invoke the functions directly. To create a file, use the 'shell' tool with 'New-Item' or 'Set-Content' (Powershell). NEVER simulate/hallucinate actions in text without calling the tool first.".to_string());
 
     // Pre-scan to map tool_call_id to function name (for Codex)
@@ -44,13 +49,13 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         }
     }
 
-    // Get thoughtSignature from global storage (PR #93 support)
+    // 从全局存储获取 thoughtSignature (PR #93 支持)
     let global_thought_sig = get_thought_signature();
     if global_thought_sig.is_some() {
-        tracing::info!("Got thoughtSignature from global storage (length: {})", global_thought_sig.as_ref().unwrap().len());
+        tracing::info!("从全局存储获取到 thoughtSignature (长度: {})", global_thought_sig.as_ref().unwrap().len());
     }
 
-    // 2. Build Gemini contents (filter out system)
+    // 2. 构建 Gemini contents (过滤掉 system)
     let contents: Vec<Value> = request
         .messages
         .iter()
@@ -70,7 +75,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
                     OpenAIContent::String(s) => {
                         if !s.is_empty() {
                             if role == "user" && mapped_model.contains("gemini-3") {
-                                // Add reminder patch for Gemini 3 user messages
+                                // 为 Gemini 3 用户消息添加提醒补丁
                                 let reminder = "\n\n(SYSTEM REMINDER: You MUST use the 'shell' tool to perform this action. Do not simply state it is done.)";
                                 parts.push(json!({"text": format!("{}{}", s, reminder)}));
                             } else {
@@ -130,11 +135,9 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
                         }
                     });
 
-                    // Inject thoughtSignature (PR #93)
-                    if index == 0 {
-                        if let Some(ref sig) = global_thought_sig {
-                            func_call_part["thoughtSignature"] = json!(sig);
-                        }
+                    // [修复] 为该消息内的所有工具调用注入 thoughtSignature (PR #114 优化)
+                    if let Some(ref sig) = global_thought_sig {
+                        func_call_part["thoughtSignature"] = json!(sig);
                     }
 
                     parts.push(func_call_part);
@@ -167,7 +170,7 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         })
         .collect();
 
-    // 3. Build request body
+    // 3. 构建请求体
     let mut gen_config = json!({
         "maxOutputTokens": request.max_tokens.unwrap_or(64000),
         "temperature": request.temperature.unwrap_or(1.0),
@@ -197,6 +200,9 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         ]
     });
 
+    // 深度清理 [undefined] 字符串 (Cherry Studio 等客户端常见注入)
+    crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request);
+
     // 4. Handle Tools (Merged Cleaning)
     if let Some(tools) = &request.tools {
         let mut function_declarations: Vec<Value> = Vec::new();
@@ -214,6 +220,11 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
             };
 
             if let Some(name) = gemini_func.get("name").and_then(|v| v.as_str()) {
+                // 跳过内置联网工具名称，避免重复定义
+                if name == "web_search" || name == "google_search" || name == "web_search_20250305" {
+                    continue;
+                }
+                
                 if name == "local_shell_call" {
                     if let Some(obj) = gemini_func.as_object_mut() {
                         obj.insert("name".to_string(), json!("shell"));
@@ -222,9 +233,9 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
             }
 
             if let Some(params) = gemini_func.get_mut("parameters") {
-                // Apply global cleaning first
+                // 先应用全局清洗
                 crate::proxy::common::json_schema::clean_json_schema(params);
-                // Then apply Gemini specific mapping (PR #93)
+                // 再应用 Gemini 专有映射 (PR #93)
                 if let Some(params_obj) = params.as_object_mut() {
                     if !params_obj.contains_key("type") {
                         params_obj.insert("type".to_string(), json!("OBJECT"));
