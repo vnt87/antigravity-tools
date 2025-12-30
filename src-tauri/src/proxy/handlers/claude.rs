@@ -79,6 +79,7 @@ pub async fn handle_messages(
     
     
     crate::modules::logger::log_info(&format!("[{}] Received Claude request for model: {}, content_preview: {:.100}...", trace_id, request.model, latest_msg));
+    tracing::info!("[{}] Full Claude Request: {}", trace_id, serde_json::to_string_pretty(&request).unwrap_or_default());
 
     // 1. 获取 会话 ID (已废弃基于内容的哈希，改用 TokenManager 内部的时间窗口锁定)
     let session_id: Option<&str> = None;
@@ -112,7 +113,10 @@ pub async fn handle_messages(
         let config = crate::proxy::mappers::common_utils::resolve_request_config(&request_for_body.model, &mapped_model, &tools_val);
 
         // 4. 获取 Token (使用准确的 request_type)
-        let (access_token, project_id, email) = match token_manager.get_token(&config.request_type, false).await {
+        // 关键：在重试尝试 (attempt > 0) 时，必须根据错误类型决定是否强制轮换账号
+        let force_rotate_token = attempt > 0; 
+        
+        let (access_token, project_id, email) = match token_manager.get_token(&config.request_type, force_rotate_token).await {
             Ok(t) => t,
             Err(e) => {
                  return (
@@ -202,6 +206,7 @@ pub async fn handle_messages(
         let mut request_with_mapped = request_for_body.clone();
 
         if is_background_task {
+             // 修正：使用支持的 flash 模型 (2.5 可能不存在或不支持 thinking)
              mapped_model = "gemini-2.5-flash".to_string();
              tracing::info!("[{}][AUTO] 检测到后台任务 ({})，已重定向: {}", 
                 trace_id,
@@ -209,9 +214,21 @@ pub async fn handle_messages(
                 mapped_model
              );
              // [Optimization] **后台任务净化**: 
-             // 此类任务纯粹为文本处理，绝不需要执行工具。
-             // 强制清空 tools 字段，彻底根除 "Multiple tools" (400) 冲突风险。
+             // 1. 此类任务纯粹为文本处理，绝不需要执行工具。
              request_with_mapped.tools = None;
+             
+             // 2. 后台任务不需要 Thinking，且 Flash 模型可能不兼容 Thinking Config 或历史 Thinking Block
+             request_with_mapped.thinking = None;
+             
+             // 3. 清理历史消息中的 Thinking Block，防止 Invalid Argument
+             for msg in request_with_mapped.messages.iter_mut() {
+                if let crate::proxy::mappers::claude::models::MessageContent::Array(blocks) = &mut msg.content {
+                    blocks.retain(|b| !matches!(b, 
+                        crate::proxy::mappers::claude::models::ContentBlock::Thinking { .. } |
+                        crate::proxy::mappers::claude::models::ContentBlock::RedactedThinking { .. }
+                    ));
+                }
+             }
         } else {
              // [USER] 标记真实用户请求
              // [Optimization] 使用 WARN 级别高亮显示用户消息，防止被后台任务日志淹没
@@ -229,7 +246,10 @@ pub async fn handle_messages(
         // let _trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
 
         let gemini_body = match transform_claude_request_in(&request_with_mapped, &project_id) {
-            Ok(b) => b,
+            Ok(b) => {
+                tracing::info!("[{}] Transformed Gemini Body: {}", trace_id, serde_json::to_string_pretty(&b).unwrap_or_default());
+                b
+            },
             Err(e) => {
                  return (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -336,6 +356,7 @@ pub async fn handle_messages(
         // 处理错误
         let error_text = response.text().await.unwrap_or_else(|_| format!("HTTP {}", status));
         last_error = format!("HTTP {}: {}", status, error_text);
+        tracing::error!("[{}] Upstream Error Response: {}", trace_id, error_text);
         
         let status_code = status.as_u16();
         

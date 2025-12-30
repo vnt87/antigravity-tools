@@ -62,7 +62,8 @@ pub async fn handle_generate(
         let config = crate::proxy::mappers::common_utils::resolve_request_config(&model_name, &mapped_model, &tools_val);
 
         // 4. 获取 Token (使用准确的 request_type)
-        let (access_token, project_id, email) = match token_manager.get_token(&config.request_type, false).await {
+        // 关键：在重试尝试 (attempt > 0) 时强制轮换账号
+        let (access_token, project_id, email) = match token_manager.get_token(&config.request_type, attempt > 0).await {
             Ok(t) => t,
             Err(e) => {
                 return Err((StatusCode::SERVICE_UNAVAILABLE, format!("Token error: {}", e)));

@@ -13,8 +13,9 @@ import ModalDialog from '../components/common/ModalDialog';
 import Pagination from '../components/common/Pagination';
 import { showToast } from '../components/common/ToastContainer';
 import { Account } from '../types/account';
+import { cn } from '../utils/cn';
 
-type FilterType = 'all' | 'available' | 'low';
+type FilterType = 'all' | 'available' | 'low' | 'pro' | 'ultra' | 'free';
 type ViewMode = 'list' | 'grid';
 
 import { useTranslation } from 'react-i18next';
@@ -45,9 +46,6 @@ function Accounts() {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [localPageSize, setLocalPageSize] = useState<number>(0);
-
     useEffect(() => {
         if (!containerRef.current) return;
         const resizeObserver = new ResizeObserver((entries) => {
@@ -62,31 +60,39 @@ function Accounts() {
         return () => resizeObserver.disconnect();
     }, []);
 
-    const ITEMS_PER_PAGE = useMemo(() => {
-        if (localPageSize) return localPageSize;
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [localPageSize, setLocalPageSize] = useState<number | null>(null); // 本地分页大小状态
 
-        // Then use user configured fixed value
+    // 动态计算分页条数
+    const ITEMS_PER_PAGE = useMemo(() => {
+        // 优先使用本地设置的分页大小
+        if (localPageSize && localPageSize > 0) {
+            return localPageSize;
+        }
+
+        // 其次使用用户配置的固定值
         if (config?.accounts_page_size && config.accounts_page_size > 0) {
             return config.accounts_page_size;
         }
 
-        // Fallback to original dynamic calculation logic
+        // 回退到原有的动态计算逻辑
         if (!containerSize.height) return viewMode === 'grid' ? 6 : 8;
 
         if (viewMode === 'list') {
-            const headerHeight = 36; // Header height after shrinking
-            const rowHeight = 42;    // Row height after extreme compression
-            // Calculate how many rows can fit, at least 1
+            const headerHeight = 36; // 缩深后的表头高度
+            const rowHeight = 42;    // 极限压缩后的行高
+            // 计算能容纳多少行,至少 1 行
             return Math.max(1, Math.floor((containerSize.height - headerHeight) / rowHeight));
         } else {
-            const cardHeight = 158; // AccountCard estimated height (including gap)
+            const cardHeight = 158; // AccountCard 预估高度 (含间距)
             const gap = 16;         // gap-4
 
-            // Match Tailwind breakpoint logic
+            // 匹配 Tailwind 断点逻辑
             let cols = 1;
-            if (containerSize.width >= 1200) cols = 4;      // xl (approx 1280)
-            else if (containerSize.width >= 900) cols = 3;   // lg (approx 1024)
-            else if (containerSize.width >= 600) cols = 2;   // md (approx 768)
+            if (containerSize.width >= 1200) cols = 4;      // xl (约为 1280 左右)
+            else if (containerSize.width >= 900) cols = 3;   // lg (约为 1024 左右)
+            else if (containerSize.width >= 600) cols = 2;   // md (约为 768 左右)
 
             const rows = Math.max(1, Math.floor((containerSize.height + gap) / (cardHeight + gap)));
             return cols * rows;
@@ -102,34 +108,55 @@ function Accounts() {
         setCurrentPage(1);
     }, [viewMode]);
 
-    // Filter and search
+    // 搜索过滤逻辑
+    const searchedAccounts = useMemo(() => {
+        if (!searchQuery) return accounts;
+        const lowQuery = searchQuery.toLowerCase();
+        return accounts.filter(a => a.email.toLowerCase().includes(lowQuery));
+    }, [accounts, searchQuery]);
+
+    // 计算各筛选状态下的数量 (基于搜索结果)
+    const filterCounts = useMemo(() => {
+        return {
+            all: searchedAccounts.length,
+            available: searchedAccounts.filter(a => !a.quota?.is_forbidden).length,
+            low: searchedAccounts.filter(a =>
+                (a.quota?.is_forbidden) ||
+                (a.quota?.models.some(m => m.percentage < 10))
+            ).length,
+            pro: searchedAccounts.filter(a => a.quota?.subscription_tier?.toLowerCase().includes('pro')).length,
+            ultra: searchedAccounts.filter(a => a.quota?.subscription_tier?.toLowerCase().includes('ultra')).length,
+            free: searchedAccounts.filter(a => {
+                const tier = a.quota?.subscription_tier?.toLowerCase();
+                return tier && !tier.includes('pro') && !tier.includes('ultra');
+            }).length,
+        };
+    }, [searchedAccounts]);
+
+    // 过滤和搜索最终结果
     const filteredAccounts = useMemo(() => {
-        let result = accounts;
+        let result = searchedAccounts;
 
-        // Search filter
-        if (searchQuery) {
-            result = result.filter(a =>
-                a.email.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        // Status filter
         if (filter === 'available') {
-            result = result.filter(a => {
-                const gemini = a.quota?.models.find(m => m.name.toLowerCase().includes('gemini'))?.percentage || 0;
-                const claude = a.quota?.models.find(m => m.name.toLowerCase().includes('claude'))?.percentage || 0;
-                return gemini >= 20 && claude >= 20;
-            });
+            result = result.filter(a => !a.quota?.is_forbidden);
         } else if (filter === 'low') {
+            result = result.filter(a =>
+                (a.quota?.is_forbidden) ||
+                (a.quota?.models.some(m => m.percentage < 10))
+            );
+        } else if (filter === 'pro') {
+            result = result.filter(a => a.quota?.subscription_tier?.toLowerCase().includes('pro'));
+        } else if (filter === 'ultra') {
+            result = result.filter(a => a.quota?.subscription_tier?.toLowerCase().includes('ultra'));
+        } else if (filter === 'free') {
             result = result.filter(a => {
-                const gemini = a.quota?.models.find(m => m.name.toLowerCase().includes('gemini'))?.percentage || 0;
-                const claude = a.quota?.models.find(m => m.name.toLowerCase().includes('claude'))?.percentage || 0;
-                return gemini < 20 || claude < 20;
+                const tier = a.quota?.subscription_tier?.toLowerCase();
+                return tier && !tier.includes('pro') && !tier.includes('ultra');
             });
         }
 
         return result;
-    }, [accounts, searchQuery, filter]);
+    }, [searchedAccounts, filter]);
 
     // Pagination Logic
     const paginatedAccounts = useMemo(() => {
@@ -141,7 +168,7 @@ function Accounts() {
         setCurrentPage(page);
     };
 
-    // Clear selection when filter changes and reset pagination
+    // 清空选择当过滤改变 并重置分页
     useEffect(() => {
         setSelectedIds(new Set());
         setCurrentPage(1);
@@ -158,7 +185,7 @@ function Accounts() {
     };
 
     const handleToggleAll = () => {
-        // Select all items on current page
+        // 全选当前页的所有项
         const currentIds = paginatedAccounts.map(a => a.id);
         const allSelected = currentIds.every(id => selectedIds.has(id));
 
@@ -277,7 +304,7 @@ function Accounts() {
             const details: string[] = [];
 
             if (isBatch) {
-                // Batch refresh selected
+                // 批量刷新选中
                 const ids = Array.from(selectedIds);
                 setRefreshingIds(new Set(ids));
 
@@ -294,7 +321,7 @@ function Accounts() {
                     }
                 });
             } else {
-                // Refresh all
+                // 刷新所有
                 setRefreshingIds(new Set(accounts.map(a => a.id)));
                 const stats = await useAccountStore.getState().refreshAllQuotas();
                 successCount = stats.success;
@@ -389,12 +416,12 @@ function Accounts() {
 
     return (
         <div className="h-full flex flex-col p-5 gap-4 max-w-7xl mx-auto w-full">
-            {/* Test button - At the top */}
+            {/* 测试按钮 - 在最顶部 */}
 
-            {/* Top toolbar: Search, filter, and action buttons */}
-            <div className="flex-none flex items-center gap-4">
-                {/* Search box */}
-                <div className="flex-1 max-w-md relative">
+            {/* 顶部工具栏：搜索、过滤和操作按钮 */}
+            <div className="flex-none flex items-center gap-2">
+                {/* 搜索框 */}
+                <div className="flex-none w-40 relative transition-all focus-within:w-48">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
@@ -405,23 +432,27 @@ function Accounts() {
                     />
                 </div>
 
-                {/* View toggle button group */}
-                <div className="flex gap-1 bg-gray-100 dark:bg-base-200 p-1 rounded-lg">
+                {/* 视图切换按钮组 */}
+                <div className="flex gap-1 bg-gray-100 dark:bg-base-200 p-1 rounded-lg shrink-0">
                     <button
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
-                            ? 'bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content'
-                            }`}
+                        className={cn(
+                            "p-1.5 rounded-md transition-all",
+                            viewMode === 'list'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content"
+                        )}
                         onClick={() => setViewMode('list')}
                         title={t('accounts.views.list')}
                     >
                         <List className="w-4 h-4" />
                     </button>
                     <button
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
-                            ? 'bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm'
-                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content'
-                            }`}
+                        className={cn(
+                            "p-1.5 rounded-md transition-all",
+                            viewMode === 'grid'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content"
+                        )}
                         onClick={() => setViewMode('grid')}
                         title={t('accounts.views.grid')}
                     >
@@ -429,73 +460,174 @@ function Accounts() {
                     </button>
                 </div>
 
-                {/* Filter button group */}
-                <div className="flex gap-1 bg-gray-100 dark:bg-base-200 p-1 rounded-lg">
+                {/* 过滤按钮组 */}
+                <div className="flex gap-0.5 bg-gray-100/80 dark:bg-base-200 p-1 rounded-xl border border-gray-200/50 dark:border-white/5 overflow-x-auto no-scrollbar">
                     <button
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${filter === 'all'
-                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content'
-                            }`}
+                        className={cn(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            filter === 'all'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                        )}
                         onClick={() => setFilter('all')}
                     >
-                        {t('accounts.all')} ({accounts.length})
+                        {t('accounts.all')}
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                            filter === 'all'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        )}>
+                            {filterCounts.all}
+                        </span>
                     </button>
+
                     <button
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${filter === 'available'
-                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content'
-                            }`}
+                        className={cn(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            filter === 'available'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                        )}
                         onClick={() => setFilter('available')}
                     >
                         {t('accounts.available')}
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                            filter === 'available'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        )}>
+                            {filterCounts.available}
+                        </span>
                     </button>
+
                     <button
-                        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${filter === 'low'
-                            ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content'
-                            }`}
+                        className={cn(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            filter === 'low'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                        )}
                         onClick={() => setFilter('low')}
                     >
                         {t('accounts.low_quota')}
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                            filter === 'low'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        )}>
+                            {filterCounts.low}
+                        </span>
+                    </button>
+
+                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center mx-1 shrink-0"></div>
+
+                    <button
+                        className={cn(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            filter === 'pro'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                        )}
+                        onClick={() => setFilter('pro')}
+                    >
+                        {t('accounts.pro')}
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                            filter === 'pro'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        )}>
+                            {filterCounts.pro}
+                        </span>
+                    </button>
+
+                    <button
+                        className={cn(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            filter === 'ultra'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                        )}
+                        onClick={() => setFilter('ultra')}
+                    >
+                        {t('accounts.ultra')}
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                            filter === 'ultra'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        )}>
+                            {filterCounts.ultra}
+                        </span>
+                    </button>
+
+                    <button
+                        className={cn(
+                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            filter === 'free'
+                                ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
+                                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
+                        )}
+                        onClick={() => setFilter('free')}
+                    >
+                        {t('accounts.free')}
+                        <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+                            filter === 'free'
+                                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                        )}>
+                            {filterCounts.free}
+                        </span>
                     </button>
                 </div>
 
-                <div className="flex-1"></div>
+                <div className="flex-1 min-w-[8px]"></div>
 
-                {/* Action button group */}
-                <div className="flex items-center gap-2">
+                {/* 操作按钮组 */}
+                <div className="flex items-center gap-1.5 shrink-0">
                     <AddAccountDialog onAdd={handleAddAccount} />
 
                     {selectedIds.size > 0 && (
                         <button
-                            className="px-3 py-2 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
+                            className="px-2.5 py-2 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1.5 shadow-sm"
                             onClick={handleBatchDelete}
+                            title={t('accounts.delete_selected', { count: selectedIds.size })}
                         >
                             <Trash2 className="w-3.5 h-3.5" />
-                            {t('accounts.delete_selected', { count: selectedIds.size })}
+                            <span className="hidden xl:inline">{t('accounts.delete_selected', { count: selectedIds.size })}</span>
                         </button>
                     )}
 
                     <button
-                        className={`px-3 py-2 bg-blue-500 text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1.5 shadow-sm ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        className={`px-2.5 py-2 bg-blue-500 text-white text-xs font-medium rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1.5 shadow-sm ${isRefreshing ? 'opacity-70 cursor-not-allowed' : ''}`}
                         onClick={handleRefreshClick}
                         disabled={isRefreshing}
+                        title={selectedIds.size > 0 ? t('accounts.refresh_selected', { count: selectedIds.size }) : t('accounts.refresh_all')}
                     >
                         <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        {isRefreshing ? t('common.loading') : (selectedIds.size > 0 ? t('accounts.refresh_selected', { count: selectedIds.size }) : t('accounts.refresh_all'))}
+                        <span className="hidden xl:inline">
+                            {isRefreshing ? t('common.loading') : (selectedIds.size > 0 ? t('accounts.refresh_selected', { count: selectedIds.size }) : t('accounts.refresh_all'))}
+                        </span>
                     </button>
 
                     <button
-                        className="px-3 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
+                        className="px-2.5 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
                         onClick={handleExport}
+                        title={selectedIds.size > 0 ? t('accounts.export_selected', { count: selectedIds.size }) : t('common.export')}
                     >
                         <Download className="w-3.5 h-3.5" />
-                        {selectedIds.size > 0 ? t('accounts.export_selected', { count: selectedIds.size }) : t('common.export')}
+                        <span className="hidden lg:inline">
+                            {selectedIds.size > 0 ? t('accounts.export_selected', { count: selectedIds.size }) : t('common.export')}
+                        </span>
                     </button>
                 </div>
             </div>
 
-            {/* Account list content area */}
+            {/* 账号列表内容区域 */}
             <div className="flex-1 min-h-0 relative" ref={containerRef}>
                 {viewMode === 'list' ? (
                     <div className="h-full bg-white dark:bg-base-100 rounded-2xl shadow-sm border border-gray-100 dark:border-base-200 flex flex-col overflow-hidden">
@@ -535,7 +667,7 @@ function Accounts() {
                 )}
             </div>
 
-            {/* Minimalist pagination - Borderless floating style */}
+            {/* 极简分页 - 无边框浮动样式 */}
             {
                 filteredAccounts.length > 0 && (
                     <div className="flex-none">
@@ -547,7 +679,7 @@ function Accounts() {
                             itemsPerPage={ITEMS_PER_PAGE}
                             onPageSizeChange={(newSize) => {
                                 setLocalPageSize(newSize);
-                                setCurrentPage(1); // Reset to first page
+                                setCurrentPage(1); // 重置到第一页
                             }}
                             pageSizeOptions={[10, 20, 50, 100]}
                         />

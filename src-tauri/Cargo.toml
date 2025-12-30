@@ -1,6 +1,6 @@
 [package]
 name = "antigravity_tools"
-version = "3.3.3"
+version = "3.3.7"
 description = "A Tauri App"
 authors = ["you"]
 license = "CC-BY-NC-SA-4.0"
@@ -28,7 +28,7 @@ chrono = "0.4"
 dirs = "5.0"
 reqwest = { version = "0.12", features = ["json", "stream", "socks"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
 base64 = "0.22"
 sysinfo = "0.31"
@@ -40,7 +40,7 @@ image = "0.25.9"
 thiserror = "2.0.17"
 
 # 反代服务依赖
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
 tower = "0.4"
