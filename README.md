@@ -204,6 +204,61 @@ print(response.choices[0].message.content)
 ## 📝 Nhà phát triển và Cộng đồng
 
 *   **Nhật ký thay đổi (Changelog)**:
+    *   **v3.3.7 (2025-12-30)**:
+        - **Sửa lỗi ổn định cốt lõi của Proxy (Cảm ơn @llsenyue PR #191)**:
+            - **Làm cứng JSON Schema**: Thực hiện làm phẳng và dọn dẹp đệ quy Schema gọi công cụ, tự động chuyển các ràng buộc không hỗ trợ (như `pattern`) sang trường mô tả, giải quyết triệt để lỗi từ chối Schema.
+            - **Tăng cường độ tin cậy cho tác vụ nền**: Thêm phát hiện tác vụ nền (như tạo tóm tắt), tự động lọc cấu hình chuỗi tư duy và các khối lịch sử, chuyển hướng đến `gemini-2.5-flash` để đảm bảo tỷ lệ thành công 100%.
+            - **Tự động bắt chữ ký chuỗi tư duy**: Tối ưu hóa logic trích xuất và lưu trữ `thoughtSignature`, giải quyết lỗi 400 do mất chữ ký trong hội thoại nhiều lượt.
+            - **Tối ưu hóa trải nghiệm nhật ký**: Tăng mức ưu tiên nhật ký cho tin nhắn người dùng, đảm bảo thông tin hội thoại cốt lõi không bị chôn vùi bởi nhật ký tác vụ nền.
+    *   **v3.3.6 (2025-12-30)**:
+        - **Thích ứng sâu chức năng hình ảnh OpenAI (Cảm ơn @llsenyue PR #186)**:
+            - **Thêm giao diện tạo hình ảnh**: Hỗ trợ đầy đủ điểm cuối `/v1/images/generations` với các tham số tiêu chuẩn như `model`, `prompt`, `n`, `size` và `response_format`.
+            - **Thêm giao diện chỉnh sửa và biến đổi hình ảnh**: Thích ứng với các điểm cuối `/v1/images/edits` và `/v1/images/variations`.
+            - **Cầu nối giao thức tầng thấp**: Thực hiện ánh xạ cấu trúc và xác thực tự động từ yêu cầu hình ảnh OpenAI sang Google Internal API (Cloud Code).
+    *   **v3.3.5 (2025-12-29)**:
+        - **Sửa lỗi cốt lõi và tăng cường độ ổn định**:
+            - **Sửa triệt để lỗi 400 Claude Extended Thinking (kịch bản chuyển đổi mô hình)**: Giải quyết lỗi xác thực Google API khi chuyển từ mô hình thông thường sang mô hình chuỗi tư duy trong cùng một phiên do thiếu các khối tư duy lịch sử. Hệ thống hiện tự động bổ sung các khối tư duy lịch sử để đảm bảo tính tuân thủ.
+            - **Thêm tính năng tự động luân chuyển tài khoản cho lỗi 429 (Account Rotation)**: Tối ưu hóa cơ chế thử lại. Khi gặp lỗi `429` (giới hạn tần suất/hạn ngạch), `403` (quyền truy cập) hoặc `401` (xác thực hết hạn), hệ thống sẽ **buộc bỏ qua khóa phiên 60 giây** và chuyển sang tài khoản khả dụng tiếp theo trong kho, thực hiện chuyển đổi dự phòng.
+            - **Bảo trì Unit Test**: Sửa nhiều unit test cũ bị hỏng, đảm bảo chu trình biên dịch và kiểm tra logic trong môi trường phát triển.
+        - **Tối ưu hóa hệ thống nhật ký**:
+            - **Dọn dẹp nhật ký dư thừa**: Loại bỏ nhật ký in từng dòng tất cả tên mô hình khi tra cứu hạn ngạch, hạ cấp danh sách mô hình chi tiết xuống mức debug, giảm tiếng ồn bảng điều khiển.
+            - **Hỗ trợ múi giờ địa phương**: Dấu thời gian nhật ký hiện tự động sử dụng định dạng múi giờ địa phương (ví dụ: `2025-12-29T22:50:41+08:00`) thay vì giờ UTC.
+        - **Tối ưu hóa giao diện (UI)**:
+            - **Tối ưu hóa hiển thị thời gian làm mới hạn ngạch**: Thêm biểu tượng đồng hồ, triển khai căn giữa và phản hồi màu động (đồng bộ hóa cả chế độ xem bảng và thẻ).
+    *   **v3.3.4 (2025-12-29)**:
+        - **Tăng cường khả năng tương thích OpenAI/Codex (Cảm ơn @llsenyue PR #158)**:
+            - **Sửa lỗi nhận dạng hình ảnh**: Thích ứng hoàn hảo với việc phân tích khối `input_image` của Codex CLI, hỗ trợ tự động chuyển đổi đường dẫn cục bộ `file://` sang Base64.
+            - **Quản lý lỗi Gemini 400**: Hỗ trợ tự động hợp nhất các tin nhắn liên tiếp của cùng một vai trò, tuân thủ nghiêm ngặt quy tắc luân phiên vai trò của Gemini, giải quyết triệt để lỗi 400 liên quan.
+            - **Tăng cường độ ổn định giao thức**: Tối ưu hóa dọn dẹp sâu JSON Schema (thêm cách ly vật lý cho `cache_control`) và logic điền thông tin ngữ cảnh cho `thoughtSignature`.
+            - **Điều chỉnh chiến lược build Linux**: Phiên bản chính thức hiện quay lại sử dụng môi trường **Ubuntu 22.04**.
+    *   **v3.3.3 (2025-12-29)**:
+        - **Tăng cường quản lý tài khoản**:
+            - **Nhận dạng thông minh cấp độ gói**: Thêm hỗ trợ tự động nhận dạng, đánh dấu và lọc cấp độ gói tài khoản (PRO/ULTRA/FREE).
+            - **Hệ thống lọc đa chiều**: Trang quản lý tài khoản thêm các Tab lọc "Tất cả/Khả dụng/Hạn ngạch thấp/PRO/ULTRA/FREE", hỗ trợ đếm số lượng thời gian thực và tìm kiếm liên kết.
+            - **Tối ưu hóa sâu UI/UX**: Sử dụng thiết kế chuyển đổi Tab nhạy cao; tái cấu trúc bố cục thanh công cụ trên cùng, giới thiệu ô tìm kiếm đàn hồi và nút thao tác thích ứng.
+        - **Sửa lỗi cốt lõi**:
+            - **Sửa triệt để lỗi 400 Claude Extended Thinking**: Giải quyết lỗi định dạng do thiếu thẻ `thought: true` trong các tin nhắn `ContentBlock::Thinking` lịch sử. Sửa lỗi này giúp tăng đáng kể độ ổn định của hội thoại nhiều lượt.
+    *   **v3.3.2 (2025-12-29)**:
+        - **Tính năng mới (Cảm ơn @XinXin622 PR #128)**:
+            - **Hỗ trợ trích dẫn tìm kiếm web cho giao thức Claude**: Thực hiện ánh xạ kết quả tìm kiếm Google Search của Gemini thành các khối nội dung `web_search_tool_result` nguyên bản của Claude.
+            - **Tăng cường ổn định chế độ Thinking (Global Signature Store v2)**: Giới thiệu cơ chế lưu trữ `thoughtSignature` toàn cầu mạnh mẽ hơn, tự động điền chữ ký cho các yêu cầu thiếu, giảm đáng kể lỗi `400 INVALID_ARGUMENT`.
+        - **Tối ưu hóa và Sửa lỗi**:
+            - **Tăng cường độ mạnh mô hình dữ liệu**: Thống nhất và tái cấu trúc cấu trúc dữ liệu `GroundingMetadata` nội bộ.
+            - **Tối ưu hóa logic đầu ra luồng**: Tối ưu hóa công cụ chuyển đổi SSE để đảm bảo `thoughtSignature` được trích xuất và lưu trữ chính xác.
+    *   **v3.3.1 (2025-12-28)**:
+        - **Sửa lỗi nghiêm trọng (Critical Fixes)**:
+            - **Sửa sâu lỗi 400 giao thức Claude (Tối ưu hóa Claude Code)**:
+                - **Giải quyết xung đột Cache Control (Sửa cache_control)**: Giải quyết triệt để lỗi xác thực do thẻ `cache_control` hoặc trường `thought: true` trong tin nhắn lịch sử.
+                - **Công cụ dọn dẹp JSON Schema chuyên sâu**: Tối ưu hóa việc chuyển đổi định nghĩa công cụ MCP, tự động di chuyển các ràng buộc không hỗ trợ sang trường mô tả.
+                - **Tuân thủ tiêu đề giao thức**: Loại bỏ các thẻ `role` không tiêu chuẩn và tăng cường lọc `cache_control`.
+            - **Tăng cường kết nối và tương thích tìm kiếm Web**: 
+                - **Tương thích tìm kiếm**: Hỗ trợ các định nghĩa công cụ thế hệ mới như `googleSearchRetrieval`.
+                - **Tự động làm sạch dữ liệu khách**: Loại bỏ các thuộc tính `[undefined]` do các ứng dụng khách như Cherry Studio chèn vào.
+                - **Tự động kết nối mạng cho mô hình ảo chất lượng cao**: Mở rộng danh sách trắng mô hình hiệu suất cao để kích hoạt tìm kiếm mạng mặc định.
+        - **Tối ưu hóa và Tiết kiệm Token**:
+            - **Truy vết toàn liên kết và Nhật ký kiểm tra**: Giới thiệu Trace ID ngẫu nhiên 6 ký tự và báo cáo tiêu thụ token.
+            - **"Token Saver" cho tác vụ nền Claude CLI**: Tự động nhận diện và chuyển hướng các yêu cầu giá trị thấp sang `gemini-2.5-flash`, tiết kiệm đáng kể token giá trị cao.
+
     *   **v3.3.0 (2025-12-27)**:
         - **Cập nhật quan trọng (Major Updates)**:
             - **Thích ứng sâu Codex CLI & Claude CLI (Cảm ơn nòng cốt @llsenyue PR #93)**: 
