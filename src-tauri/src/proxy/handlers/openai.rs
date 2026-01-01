@@ -508,7 +508,7 @@ pub async fn handle_completions(
 
     let mut last_error = String::new();
 
-    for attempt in 0..max_attempts {
+    for _attempt in 0..max_attempts {
         let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
             &openai_req.model,
             &*state.custom_mapping.read().await,
@@ -645,14 +645,27 @@ pub async fn handle_completions(
     ))
 }
 
-pub async fn handle_list_models() -> impl IntoResponse {
+pub async fn handle_list_models(State(state): State<AppState>) -> impl IntoResponse {
+    use crate::proxy::common::model_mapping::get_all_dynamic_models;
+
+    let model_ids = get_all_dynamic_models(
+        &state.openai_mapping,
+        &state.custom_mapping,
+        &state.anthropic_mapping,
+    ).await;
+
+    let data: Vec<_> = model_ids.into_iter().map(|id| {
+        json!({
+            "id": id,
+            "object": "model",
+            "created": 1706745600,
+            "owned_by": "antigravity"
+        })
+    }).collect();
+
     Json(json!({
         "object": "list",
-        "data": [
-            {"id": "gpt-4", "object": "model", "created": 1706745600, "owned_by": "openai"},
-            {"id": "gpt-3.5-turbo", "object": "model", "created": 1706745600, "owned_by": "openai"},
-            {"id": "o1-mini", "object": "model", "created": 1706745600, "owned_by": "openai"}
-        ]
+        "data": data
     }))
 }
 
@@ -750,7 +763,7 @@ pub async fn handle_images_generations(
         let project_id = project_id.clone();
         let final_prompt = final_prompt.clone();
         let aspect_ratio = aspect_ratio.to_string();
-        let response_format = response_format.to_string();
+        let _response_format = response_format.to_string();
 
         tasks.push(tokio::spawn(async move {
             let gemini_body = json!({

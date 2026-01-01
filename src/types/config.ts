@@ -6,6 +6,7 @@ export interface UpstreamProxyConfig {
 export interface ProxyConfig {
     enabled: boolean;
     allow_lan_access?: boolean;
+    auth_mode?: 'off' | 'strict' | 'all_except_health' | 'auto';
     port: number;
     api_key: string;
     auto_start: boolean;
@@ -13,7 +14,34 @@ export interface ProxyConfig {
     openai_mapping?: Record<string, string>;
     custom_mapping?: Record<string, string>;
     request_timeout: number;
+    enable_logging: boolean;
     upstream_proxy: UpstreamProxyConfig;
+    zai?: ZaiConfig;
+}
+
+export type ZaiDispatchMode = 'off' | 'exclusive' | 'pooled' | 'fallback';
+
+export interface ZaiMcpConfig {
+    enabled: boolean;
+    web_search_enabled: boolean;
+    web_reader_enabled: boolean;
+    vision_enabled: boolean;
+}
+
+export interface ZaiModelDefaults {
+    opus: string;
+    sonnet: string;
+    haiku: string;
+}
+
+export interface ZaiConfig {
+    enabled: boolean;
+    base_url: string;
+    api_key: string;
+    dispatch_mode: ZaiDispatchMode;
+    model_mapping?: Record<string, string>;
+    models: ZaiModelDefaults;
+    mcp: ZaiMcpConfig;
 }
 
 export interface AppConfig {
@@ -29,4 +57,3 @@ export interface AppConfig {
     accounts_page_size?: number; // Number of accounts per page, default 0 means auto calculation
     proxy: ProxyConfig;
 }
-

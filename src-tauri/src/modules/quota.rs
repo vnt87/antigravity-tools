@@ -4,7 +4,6 @@ use serde_json::json;
 use crate::models::QuotaData;
 
 const QUOTA_API_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
-const LOAD_PROJECT_API_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist";
 const USER_AGENT: &str = "antigravity/1.11.3 Darwin/arm64";
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,9 +38,12 @@ struct LoadProjectResponse {
 #[derive(Debug, Deserialize)]
 struct Tier {
     id: Option<String>,
+    #[allow(dead_code)]
     #[serde(rename = "quotaTier")]
     quota_tier: Option<String>,
+    #[allow(dead_code)]
     name: Option<String>,
+    #[allow(dead_code)]
     slug: Option<String>,
 }
 

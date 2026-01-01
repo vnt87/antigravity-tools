@@ -16,6 +16,8 @@ use crate::proxy::mappers::claude::{
     transform_claude_request_in, transform_response, create_claude_sse_stream, ClaudeRequest,
 };
 use crate::proxy::server::AppState;
+use axum::http::HeaderMap;
+use std::sync::atomic::Ordering;
 
 const MAX_RETRY_ATTEMPTS: usize = 3;
 
@@ -24,8 +26,59 @@ const MAX_RETRY_ATTEMPTS: usize = 3;
 /// 处理 Chat 消息请求流程
 pub async fn handle_messages(
     State(state): State<AppState>,
-    Json(request): Json<ClaudeRequest>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
 ) -> Response {
+    // Decide whether this request should be handled by z.ai (Anthropic passthrough) or the existing Google flow.
+    let zai = state.zai.read().await.clone();
+    let zai_enabled = zai.enabled && !matches!(zai.dispatch_mode, crate::proxy::ZaiDispatchMode::Off);
+    let google_accounts = state.token_manager.len();
+
+    let use_zai = if !zai_enabled {
+        false
+    } else {
+        match zai.dispatch_mode {
+            crate::proxy::ZaiDispatchMode::Off => false,
+            crate::proxy::ZaiDispatchMode::Exclusive => true,
+            crate::proxy::ZaiDispatchMode::Fallback => google_accounts == 0,
+            crate::proxy::ZaiDispatchMode::Pooled => {
+                // Treat z.ai as exactly one extra slot in the pool.
+                // No strict guarantees: it may get 0 requests if selection never hits.
+                let total = google_accounts.saturating_add(1).max(1);
+                let slot = state.provider_rr.fetch_add(1, Ordering::Relaxed) % total;
+                slot == 0
+            }
+        }
+    };
+
+    if use_zai {
+        return crate::proxy::providers::zai_anthropic::forward_anthropic_json(
+            &state,
+            axum::http::Method::POST,
+            "/v1/messages",
+            &headers,
+            body,
+        )
+        .await;
+    }
+
+    let request: ClaudeRequest = match serde_json::from_value(body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "type": "error",
+                    "error": {
+                        "type": "invalid_request_error",
+                        "message": format!("Invalid request body: {}", e)
+                    }
+                })),
+            )
+                .into_response();
+        }
+    };
+
     // 生成随机 Trace ID 用户追踪
     let trace_id: String = rand::Rng::sample_iter(rand::thread_rng(), &rand::distributions::Alphanumeric)
         .take(6)
@@ -79,10 +132,40 @@ pub async fn handle_messages(
     
     
     crate::modules::logger::log_info(&format!("[{}] Received Claude request for model: {}, content_preview: {:.100}...", trace_id, request.model, latest_msg));
-    tracing::info!("[{}] Full Claude Request: {}", trace_id, serde_json::to_string_pretty(&request).unwrap_or_default());
+    
+    // ===== 增强调试日志：输出完整请求详情 =====
+    tracing::warn!("========== [{}] CLAUDE REQUEST DEBUG START ==========", trace_id);
+    tracing::warn!("[{}] Model: {}", trace_id, request.model);
+    tracing::warn!("[{}] Stream: {}", trace_id, request.stream);
+    tracing::warn!("[{}] Max Tokens: {:?}", trace_id, request.max_tokens);
+    tracing::warn!("[{}] Temperature: {:?}", trace_id, request.temperature);
+    tracing::warn!("[{}] Message Count: {}", trace_id, request.messages.len());
+    tracing::warn!("[{}] Has Tools: {}", trace_id, request.tools.is_some());
+    tracing::warn!("[{}] Has Thinking Config: {}", trace_id, request.thinking.is_some());
+    
+    // 输出每一条消息的详细信息
+    for (idx, msg) in request.messages.iter().enumerate() {
+        let content_preview = match &msg.content {
+            crate::proxy::mappers::claude::models::MessageContent::String(s) => {
+                if s.len() > 200 {
+                    format!("{}... (total {} chars)", &s[..200], s.len())
+                } else {
+                    s.clone()
+                }
+            },
+            crate::proxy::mappers::claude::models::MessageContent::Array(arr) => {
+                format!("[Array with {} blocks]", arr.len())
+            }
+        };
+        tracing::warn!("[{}] Message[{}] - Role: {}, Content: {}", 
+            trace_id, idx, msg.role, content_preview);
+    }
+    
+    tracing::warn!("[{}] Full Claude Request JSON: {}", trace_id, serde_json::to_string_pretty(&request).unwrap_or_default());
+    tracing::warn!("========== [{}] CLAUDE REQUEST DEBUG END ==========", trace_id);
 
     // 1. 获取 会话 ID (已废弃基于内容的哈希，改用 TokenManager 内部的时间窗口锁定)
-    let session_id: Option<&str> = None;
+    let _session_id: Option<&str> = None;
 
     // 2. 获取 UpstreamClient
     let upstream = state.upstream.clone();
@@ -119,13 +202,18 @@ pub async fn handle_messages(
         let (access_token, project_id, email) = match token_manager.get_token(&config.request_type, force_rotate_token).await {
             Ok(t) => t,
             Err(e) => {
+                let safe_message = if e.contains("invalid_grant") {
+                    "OAuth refresh failed (invalid_grant): refresh_token likely revoked/expired; reauthorize account(s) to restore service.".to_string()
+                } else {
+                    e
+                };
                  return (
                     StatusCode::SERVICE_UNAVAILABLE,
                     Json(json!({
                         "type": "error",
                         "error": {
                             "type": "overloaded_error",
-                            "message": format!("No available accounts: {}", e)
+                            "message": format!("No available accounts: {}", safe_message)
                         }
                     }))
                 ).into_response();
@@ -135,108 +223,51 @@ pub async fn handle_messages(
         tracing::info!("Using account: {} for request (type: {})", email, config.request_type);
         
         
-        // --- 核心优化：智能识别与拦截后台自动请求 ---
-        // [DEBUG] 临时调试：打印原始消息以诊断提取失败
-        if let Some(last_msg) = request_for_body.messages.last() {
-            tracing::debug!("[{}] DEBUG - Last message role: {}, content type: {}", 
-                trace_id, 
-                last_msg.role,
-                match &last_msg.content {
-                    crate::proxy::mappers::claude::models::MessageContent::String(_) => "String",
-                    crate::proxy::mappers::claude::models::MessageContent::Array(_) => "Array",
-                }
-            );
-        }
-
-        // [FIX] 只扫描真正的"最后一条"用户消息，且必须过滤掉系统消息
-        // 关键：复用 meaningful_msg 的过滤逻辑，确保 Warmup/system-reminder 不会被当作用户请求
-        let last_user_msg = request_for_body.messages.iter().rev()
-            .filter(|m| m.role == "user")
-            .find_map(|m| {
-                let content = match &m.content {
-                    crate::proxy::mappers::claude::models::MessageContent::String(s) => s.to_string(),
-                    crate::proxy::mappers::claude::models::MessageContent::Array(arr) => {
-                        arr.iter()
-                            .filter_map(|block| match block {
-                                crate::proxy::mappers::claude::models::ContentBlock::Text { text } => Some(text.as_str()),
-                                _ => None,
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    }
-                };
-                
-                // 过滤规则：忽略系统消息
-                if content.trim().is_empty() 
-                    || content.starts_with("Warmup") 
-                    || content.contains("<system-reminder>") 
-                {
-                    None 
-                } else {
-                    Some(content)
-                }
-            })
-            .unwrap_or_default();
-
-        // [DEBUG] 打印提取结果
-        tracing::debug!("[{}] DEBUG - Extracted last_user_msg length: {}, preview: {:.100}", 
-            trace_id, 
-            last_user_msg.len(),
-            last_user_msg
-        );
-
-        // 关键词识别：标题生成、摘要提取、下一步提示建议等
-        // [Optimization] 增加长度限制：真实用户提问通常不会包含这些特殊指令，且后台任务通常极短
-        let preview_msg = last_user_msg.chars().take(500).collect::<String>();
+        // ===== 【优化】后台任务智能检测与降级 =====
+        // 使用新的检测系统，支持 5 大类关键词和多 Flash 模型策略
+        let background_task_type = detect_background_task_type(&request_for_body);
         
-        // [CRITICAL FIX] 强制识别系统消息为后台任务，防止它们消耗顶配额度
-        let is_system_message = preview_msg.starts_with("Warmup") 
-            || preview_msg.contains("<system-reminder>")
-            || preview_msg.contains("Caveat: The messages below were generated by the user while running local commands");
-        
-        let is_background_task = is_system_message || (
-            (preview_msg.contains("write a 5-10 word title") 
-                || preview_msg.contains("Respond with the title")
-                || preview_msg.contains("Concise summary")
-                || preview_msg.contains("prompt suggestion generator"))
-            && last_user_msg.len() < 800
-        ); // 额外保险：后台任务通常不超过 800 字符
-
         // 传递映射后的模型名
         let mut request_with_mapped = request_for_body.clone();
 
-        if is_background_task {
-             // 修正：使用支持的 flash 模型 (2.5 可能不存在或不支持 thinking)
-             mapped_model = "gemini-2.5-flash".to_string();
-             tracing::info!("[{}][AUTO] 检测到后台任务 ({})，已重定向: {}", 
+        if let Some(task_type) = background_task_type {
+            // 检测到后台任务，强制降级到 Flash 模型
+            let downgrade_model = select_background_model(task_type);
+            
+            tracing::warn!(
+                "[{}][AUTO] 检测到后台任务 (类型: {:?})，强制降级: {} -> {}",
                 trace_id,
-                preview_msg,
-                mapped_model
-             );
-             // [Optimization] **后台任务净化**: 
-             // 1. 此类任务纯粹为文本处理，绝不需要执行工具。
-             request_with_mapped.tools = None;
-             
-             // 2. 后台任务不需要 Thinking，且 Flash 模型可能不兼容 Thinking Config 或历史 Thinking Block
-             request_with_mapped.thinking = None;
-             
-             // 3. 清理历史消息中的 Thinking Block，防止 Invalid Argument
-             for msg in request_with_mapped.messages.iter_mut() {
+                task_type,
+                mapped_model,
+                downgrade_model
+            );
+            
+            // 覆盖用户自定义映射
+            mapped_model = downgrade_model.to_string();
+            
+            // 后台任务净化：
+            // 1. 移除工具定义（后台任务不需要工具）
+            request_with_mapped.tools = None;
+            
+            // 2. 移除 Thinking 配置（Flash 模型不支持）
+            request_with_mapped.thinking = None;
+            
+            // 3. 清理历史消息中的 Thinking Block，防止 Invalid Argument
+            for msg in request_with_mapped.messages.iter_mut() {
                 if let crate::proxy::mappers::claude::models::MessageContent::Array(blocks) = &mut msg.content {
                     blocks.retain(|b| !matches!(b, 
                         crate::proxy::mappers::claude::models::ContentBlock::Thinking { .. } |
                         crate::proxy::mappers::claude::models::ContentBlock::RedactedThinking { .. }
                     ));
                 }
-             }
+            }
         } else {
-             // [USER] 标记真实用户请求
-             // [Optimization] 使用 WARN 级别高亮显示用户消息，防止被后台任务日志淹没
-             tracing::warn!("[{}][USER] 检测到用户交互请求 ({:.100})，保持原模型: {}", 
+            // 真实用户请求，保持原映射
+            tracing::warn!(
+                "[{}][USER] 用户交互请求，保持映射: {}",
                 trace_id,
-                preview_msg,
                 mapped_model
-             );
+            );
         }
 
         
@@ -442,38 +473,55 @@ pub async fn handle_messages(
 }
 
 /// 列出可用模型
-pub async fn handle_list_models() -> impl IntoResponse {
+pub async fn handle_list_models(State(state): State<AppState>) -> impl IntoResponse {
+    use crate::proxy::common::model_mapping::get_all_dynamic_models;
+
+    let model_ids = get_all_dynamic_models(
+        &state.openai_mapping,
+        &state.custom_mapping,
+        &state.anthropic_mapping,
+    ).await;
+
+    let data: Vec<_> = model_ids.into_iter().map(|id| {
+        json!({
+            "id": id,
+            "object": "model",
+            "created": 1706745600,
+            "owned_by": "antigravity"
+        })
+    }).collect();
+
     Json(json!({
         "object": "list",
-        "data": [
-            {
-                "id": "claude-sonnet-4-5",
-                "object": "model",
-                "created": 1706745600,
-                "owned_by": "anthropic"
-            },
-            {
-                "id": "claude-opus-4-5-thinking",
-                "object": "model",
-                "created": 1706745600,
-                "owned_by": "anthropic"
-            },
-            {
-                "id": "claude-3-5-sonnet-20241022",
-                "object": "model",
-                "created": 1706745600,
-                "owned_by": "anthropic"
-            }
-        ]
+        "data": data
     }))
 }
 
 /// 计算 tokens (占位符)
-pub async fn handle_count_tokens(Json(_body): Json<Value>) -> impl IntoResponse {
+pub async fn handle_count_tokens(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> Response {
+    let zai = state.zai.read().await.clone();
+    let zai_enabled = zai.enabled && !matches!(zai.dispatch_mode, crate::proxy::ZaiDispatchMode::Off);
+
+    if zai_enabled {
+        return crate::proxy::providers::zai_anthropic::forward_anthropic_json(
+            &state,
+            axum::http::Method::POST,
+            "/v1/messages/count_tokens",
+            &headers,
+            body,
+        )
+        .await;
+    }
+
     Json(json!({
         "input_tokens": 0,
         "output_tokens": 0
     }))
+    .into_response()
 }
 
 #[cfg(test)]
@@ -484,5 +532,153 @@ mod tests {
     async fn test_handle_list_models() {
         let response = handle_list_models().await.into_response();
         assert_eq!(response.status(), StatusCode::OK);
+    }
+}
+
+// ===== 后台任务检测辅助函数 =====
+
+/// 后台任务类型
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum BackgroundTaskType {
+    TitleGeneration,      // 标题生成
+    SimpleSummary,        // 简单摘要
+    ContextCompression,   // 上下文压缩
+    PromptSuggestion,     // 提示建议
+    SystemMessage,        // 系统消息
+    EnvironmentProbe,     // 环境探测
+}
+
+/// 标题生成关键词
+const TITLE_KEYWORDS: &[&str] = &[
+    "write a 5-10 word title",
+    "Please write a 5-10 word title",
+    "Respond with the title",
+    "Generate a title for",
+    "Create a brief title",
+    "title for the conversation",
+    "conversation title",
+    "生成标题",
+    "为对话起个标题",
+];
+
+/// 摘要生成关键词
+const SUMMARY_KEYWORDS: &[&str] = &[
+    "Summarize this coding conversation",
+    "Summarize the conversation",
+    "Concise summary",
+    "in under 50 characters",
+    "compress the context",
+    "Provide a concise summary",
+    "condense the previous messages",
+    "shorten the conversation history",
+    "extract key points from",
+];
+
+/// 建议生成关键词
+const SUGGESTION_KEYWORDS: &[&str] = &[
+    "prompt suggestion generator",
+    "suggest next prompts",
+    "what should I ask next",
+    "generate follow-up questions",
+    "recommend next steps",
+    "possible next actions",
+];
+
+/// 系统消息关键词
+const SYSTEM_KEYWORDS: &[&str] = &[
+    "Warmup",
+    "<system-reminder>",
+    "Caveat: The messages below were generated",
+    "This is a system message",
+];
+
+/// 环境探测关键词
+const PROBE_KEYWORDS: &[&str] = &[
+    "check current directory",
+    "list available tools",
+    "verify environment",
+    "test connection",
+];
+
+/// 检测后台任务并返回任务类型
+fn detect_background_task_type(request: &ClaudeRequest) -> Option<BackgroundTaskType> {
+    let last_user_msg = extract_last_user_message_for_detection(request)?;
+    let preview = last_user_msg.chars().take(500).collect::<String>();
+    
+    // 长度过滤：后台任务通常不超过 800 字符
+    if last_user_msg.len() > 800 {
+        return None;
+    }
+    
+    // 按优先级匹配
+    if matches_keywords(&preview, SYSTEM_KEYWORDS) {
+        return Some(BackgroundTaskType::SystemMessage);
+    }
+    
+    if matches_keywords(&preview, TITLE_KEYWORDS) {
+        return Some(BackgroundTaskType::TitleGeneration);
+    }
+    
+    if matches_keywords(&preview, SUMMARY_KEYWORDS) {
+        if preview.contains("in under 50 characters") {
+            return Some(BackgroundTaskType::SimpleSummary);
+        }
+        return Some(BackgroundTaskType::ContextCompression);
+    }
+    
+    if matches_keywords(&preview, SUGGESTION_KEYWORDS) {
+        return Some(BackgroundTaskType::PromptSuggestion);
+    }
+    
+    if matches_keywords(&preview, PROBE_KEYWORDS) {
+        return Some(BackgroundTaskType::EnvironmentProbe);
+    }
+    
+    None
+}
+
+/// 辅助函数：关键词匹配
+fn matches_keywords(text: &str, keywords: &[&str]) -> bool {
+    keywords.iter().any(|kw| text.contains(kw))
+}
+
+/// 辅助函数：提取最后一条用户消息（用于检测）
+fn extract_last_user_message_for_detection(request: &ClaudeRequest) -> Option<String> {
+    request.messages.iter().rev()
+        .filter(|m| m.role == "user")
+        .find_map(|m| {
+            let content = match &m.content {
+                crate::proxy::mappers::claude::models::MessageContent::String(s) => s.to_string(),
+                crate::proxy::mappers::claude::models::MessageContent::Array(arr) => {
+                    arr.iter()
+                        .filter_map(|block| match block {
+                            crate::proxy::mappers::claude::models::ContentBlock::Text { text } => Some(text.as_str()),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                }
+            };
+            
+            if content.trim().is_empty() 
+                || content.starts_with("Warmup") 
+                || content.contains("<system-reminder>") 
+            {
+                None 
+            } else {
+                Some(content)
+            }
+        })
+}
+
+/// 根据后台任务类型选择合适的模型
+fn select_background_model(task_type: BackgroundTaskType) -> &'static str {
+    match task_type {
+        BackgroundTaskType::TitleGeneration => "gemini-2.0-flash-exp",  // 极简任务
+        BackgroundTaskType::SimpleSummary => "gemini-2.0-flash-exp",    // 简单摘要
+        BackgroundTaskType::SystemMessage => "gemini-2.0-flash-exp",    // 系统消息
+        BackgroundTaskType::PromptSuggestion => "gemini-2.0-flash-exp", // 建议生成
+        BackgroundTaskType::EnvironmentProbe => "gemini-2.0-flash-exp", // 环境探测
+        BackgroundTaskType::ContextCompression => "gemini-2.5-flash",   // 复杂压缩
     }
 }

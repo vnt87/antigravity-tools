@@ -1,14 +1,17 @@
 use crate::proxy::TokenManager;
 use axum::{
     extract::DefaultBodyLimit,
+    http::StatusCode,
     response::{IntoResponse, Json, Response},
-    routing::{get, post},
+    routing::{any, get, post},
     Router,
 };
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tower_http::trace::TraceLayer;
 use tracing::{debug, error};
+use tokio::sync::RwLock;
+use std::sync::atomic::AtomicUsize;
 
 /// Axum 应用状态
 #[derive(Clone)]
@@ -24,6 +27,10 @@ pub struct AppState {
     #[allow(dead_code)]
     pub upstream_proxy: Arc<tokio::sync::RwLock<crate::proxy::config::UpstreamProxyConfig>>,
     pub upstream: Arc<crate::proxy::upstream::client::UpstreamClient>,
+    pub zai: Arc<RwLock<crate::proxy::ZaiConfig>>,
+    pub provider_rr: Arc<AtomicUsize>,
+    pub zai_vision_mcp: Arc<crate::proxy::zai_vision_mcp::ZaiVisionMcpState>,
+    pub monitor: Arc<crate::proxy::monitor::ProxyMonitor>,
 }
 
 /// Axum 服务器实例
@@ -33,6 +40,8 @@ pub struct AxumServer {
     openai_mapping: Arc<tokio::sync::RwLock<std::collections::HashMap<String, String>>>,
     custom_mapping: Arc<tokio::sync::RwLock<std::collections::HashMap<String, String>>>,
     proxy_state: Arc<tokio::sync::RwLock<crate::proxy::config::UpstreamProxyConfig>>,
+    security_state: Arc<RwLock<crate::proxy::ProxySecurityConfig>>,
+    zai_state: Arc<RwLock<crate::proxy::ZaiConfig>>,
 }
 
 impl AxumServer {
@@ -58,6 +67,18 @@ impl AxumServer {
         *proxy = new_config;
         tracing::info!("上游代理配置已热更新");
     }
+
+    pub async fn update_security(&self, config: &crate::proxy::config::ProxyConfig) {
+        let mut sec = self.security_state.write().await;
+        *sec = crate::proxy::ProxySecurityConfig::from_proxy_config(config);
+        tracing::info!("反代服务安全配置已热更新");
+    }
+
+    pub async fn update_zai(&self, config: &crate::proxy::config::ProxyConfig) {
+        let mut zai = self.zai_state.write().await;
+        *zai = config.zai.clone();
+        tracing::info!("z.ai 配置已热更新");
+    }
     /// 启动 Axum 服务器
     pub async fn start(
         host: String,
@@ -68,18 +89,27 @@ impl AxumServer {
         custom_mapping: std::collections::HashMap<String, String>,
         _request_timeout: u64,
         upstream_proxy: crate::proxy::config::UpstreamProxyConfig,
+        security_config: crate::proxy::ProxySecurityConfig,
+        zai_config: crate::proxy::ZaiConfig,
+        monitor: Arc<crate::proxy::monitor::ProxyMonitor>,
+
     ) -> Result<(Self, tokio::task::JoinHandle<()>), String> {
         let mapping_state = Arc::new(tokio::sync::RwLock::new(anthropic_mapping));
         let openai_mapping_state = Arc::new(tokio::sync::RwLock::new(openai_mapping));
         let custom_mapping_state = Arc::new(tokio::sync::RwLock::new(custom_mapping));
-        let proxy_state = Arc::new(tokio::sync::RwLock::new(upstream_proxy.clone()));
+	        let proxy_state = Arc::new(tokio::sync::RwLock::new(upstream_proxy.clone()));
+	        let security_state = Arc::new(RwLock::new(security_config));
+	        let zai_state = Arc::new(RwLock::new(zai_config));
+	        let provider_rr = Arc::new(AtomicUsize::new(0));
+	        let zai_vision_mcp_state =
+	            Arc::new(crate::proxy::zai_vision_mcp::ZaiVisionMcpState::new());
 
-        let state = AppState {
-            token_manager: token_manager.clone(),
-            anthropic_mapping: mapping_state.clone(),
-            openai_mapping: openai_mapping_state.clone(),
-            custom_mapping: custom_mapping_state.clone(),
-            request_timeout: 300, // 5分钟超时
+	        let state = AppState {
+	            token_manager: token_manager.clone(),
+	            anthropic_mapping: mapping_state.clone(),
+	            openai_mapping: openai_mapping_state.clone(),
+	            custom_mapping: custom_mapping_state.clone(),
+	            request_timeout: 300, // 5分钟超时
             thought_signature_map: Arc::new(tokio::sync::Mutex::new(
                 std::collections::HashMap::new(),
             )),
@@ -87,7 +117,12 @@ impl AxumServer {
             upstream: Arc::new(crate::proxy::upstream::client::UpstreamClient::new(Some(
                 upstream_proxy.clone(),
             ))),
+            zai: zai_state.clone(),
+            provider_rr: provider_rr.clone(),
+            zai_vision_mcp: zai_vision_mcp_state,
+            monitor: monitor.clone(),
         };
+
 
         // 构建路由 - 使用新架构的 handlers！
         use crate::proxy::handlers;
@@ -122,8 +157,21 @@ impl AxumServer {
                 "/v1/models/claude",
                 get(handlers::claude::handle_list_models),
             )
-            // Gemini Protocol (Native)
-            .route("/v1beta/models", get(handlers::gemini::handle_list_models))
+            // z.ai MCP (optional reverse-proxy)
+            .route(
+                "/mcp/web_search_prime/mcp",
+                any(handlers::mcp::handle_web_search_prime),
+            )
+	            .route(
+	                "/mcp/web_reader/mcp",
+	                any(handlers::mcp::handle_web_reader),
+	            )
+	            .route(
+	                "/mcp/zai-mcp-server/mcp",
+	                any(handlers::mcp::handle_zai_mcp_server),
+	            )
+	            // Gemini Protocol (Native)
+	            .route("/v1beta/models", get(handlers::gemini::handle_list_models))
             // Handle both GET (get info) and POST (generateContent with colon) at the same route
             .route(
                 "/v1beta/models/:model",
@@ -133,10 +181,14 @@ impl AxumServer {
                 "/v1beta/models/:model/countTokens",
                 post(handlers::gemini::handle_count_tokens),
             ) // Specific route priority
+            .route("/v1/api/event_logging/batch", post(silent_ok_handler))
+            .route("/v1/api/event_logging", post(silent_ok_handler))
             .route("/healthz", get(health_check_handler))
             .layer(DefaultBodyLimit::max(100 * 1024 * 1024))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), crate::proxy::middleware::monitor::monitor_middleware))
             .layer(TraceLayer::new_for_http())
-            .layer(axum::middleware::from_fn(
+            .layer(axum::middleware::from_fn_with_state(
+                security_state.clone(),
                 crate::proxy::middleware::auth_middleware,
             ))
             .layer(crate::proxy::middleware::cors_layer())
@@ -159,6 +211,8 @@ impl AxumServer {
             openai_mapping: openai_mapping_state.clone(),
             custom_mapping: custom_mapping_state.clone(),
             proxy_state,
+            security_state,
+            zai_state,
         };
 
         // 在新任务中启动服务器
@@ -217,4 +271,9 @@ async fn health_check_handler() -> Response {
         "status": "ok"
     }))
     .into_response()
+}
+
+/// 静默成功处理器 (用于拦截遥测日志等)
+async fn silent_ok_handler() -> Response {
+    StatusCode::OK.into_response()
 }

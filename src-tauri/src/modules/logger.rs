@@ -58,9 +58,9 @@ pub fn init_logger() {
         .with_level(true)
         .with_timer(LocalTimer);
 
-    // 4. 设置过滤层 (默认只记录 INFO 及以上级别)
+    // 4. 设置过滤层 (默认使用 DEBUG 级别以捕获详细请求信息)
     let filter_layer = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+        .unwrap_or_else(|_| EnvFilter::new("debug"));
 
     // 5. 初始化全局订阅器 (使用 try_init 避免重复初始化崩溃)
     let _ = tracing_subscriber::registry()

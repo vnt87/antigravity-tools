@@ -165,6 +165,7 @@ impl Tool {
     }
 
     /// Get the effective tool name
+    #[allow(dead_code)]
     pub fn get_name(&self) -> String {
         self.name.clone().unwrap_or_else(|| {
             // For server tools, derive name from type

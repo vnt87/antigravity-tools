@@ -1,22 +1,50 @@
-// API Key authentication middleware
+// API Key 认证中间件
 use axum::{
+    extract::State,
     extract::Request,
     http::{header, StatusCode},
     middleware::Next,
     response::Response,
 };
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
-/// API Key authentication middleware
-pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, StatusCode> {
-    // Log the request method and URI
-    tracing::info!("Request: {} {}", request.method(), request.uri());
+use crate::proxy::{ProxyAuthMode, ProxySecurityConfig};
 
-    // Extract API key from header
+/// API Key 认证中间件
+pub async fn auth_middleware(
+    State(security): State<Arc<RwLock<ProxySecurityConfig>>>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let method = request.method().clone();
+    let path = request.uri().path().to_string();
+
+    // Avoid logging query strings (can contain secrets for some integrations).
+    tracing::info!("Request: {} {}", method, path);
+
+    // Allow CORS preflight regardless of auth policy.
+    if method == axum::http::Method::OPTIONS {
+        return Ok(next.run(request).await);
+    }
+
+    let security = security.read().await.clone();
+    let effective_mode = security.effective_auth_mode();
+
+    if matches!(effective_mode, ProxyAuthMode::Off) {
+        return Ok(next.run(request).await);
+    }
+
+    if matches!(effective_mode, ProxyAuthMode::AllExceptHealth) && path == "/healthz" {
+        return Ok(next.run(request).await);
+    }
+    
+    // 从 header 中提取 API key
     let api_key = request
         .headers()
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
-        .and_then(|s| s.strip_prefix("Bearer "))
+        .and_then(|s| s.strip_prefix("Bearer ").or(Some(s)))
         .or_else(|| {
             request
                 .headers()
@@ -24,9 +52,15 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
                 .and_then(|h| h.to_str().ok())
         });
 
-    // TODO: Actually verify API key
-    // Currently allow all requests to pass
-    if api_key.is_some() || true {
+    if security.api_key.is_empty() {
+        tracing::error!("Proxy auth is enabled but api_key is empty; denying request");
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    // Constant-time compare is unnecessary here, but keep strict equality and avoid leaking values.
+    let authorized = api_key.map(|k| k == security.api_key).unwrap_or(false);
+
+    if authorized {
         Ok(next.run(request).await)
     } else {
         Err(StatusCode::UNAUTHORIZED)
@@ -35,7 +69,7 @@ pub async fn auth_middleware(request: Request, next: Next) -> Result<Response, S
 
 #[cfg(test)]
 mod tests {
-    // Remove unused use super::*;
+    // 移除未使用的 use super::*;
 
     #[test]
     fn test_auth_placeholder() {
