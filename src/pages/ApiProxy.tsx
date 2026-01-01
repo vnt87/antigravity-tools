@@ -60,7 +60,7 @@ function CollapsibleCard({
     return (
         <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200 overflow-hidden transition-all duration-200 hover:shadow-md">
             <div
-                className="px-5 py-4 flex items-center justify-between cursor-pointer bg-gray-50/50 dark:bg-base-200/30 hover:bg-gray-50 dark:hover:bg-base-200/50 transition-colors"
+                className="px-5 py-4 flex items-center justify-between cursor-pointer bg-gray-50/50 dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 onClick={(e) => {
                     // Prevent toggle when clicking the switch or right element
                     if ((e.target as HTMLElement).closest('.no-expand')) return;
@@ -68,10 +68,10 @@ function CollapsibleCard({
                 }}
             >
                 <div className="flex items-center gap-3">
-                    <div className="text-gray-500 dark:text-gray-400">
+                    <div className="text-gray-500 dark:text-gray-300">
                         {icon}
                     </div>
-                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+                    <span className="font-medium text-sm text-gray-900 dark:text-white">
                         {title}
                     </span>
                     {enabled !== undefined && (
@@ -832,7 +832,7 @@ print(response.text)`;
                 {
                     appConfig && (
                         <div className="space-y-4">
-                            <div className="px-1 flex items-center gap-2 text-gray-400">
+                            <div className="px-1 flex items-center gap-2 text-gray-500 dark:text-gray-300">
                                 <Layers size={14} />
                                 <span className="text-[10px] font-bold uppercase tracking-widest">
                                     {t('proxy.config.external_providers.title', { defaultValue: 'External Providers' })}
@@ -898,7 +898,7 @@ print(response.text)`;
                                     {/* Model Mapping Section */}
                                     <div className="pt-4 border-t border-gray-100 dark:border-base-200">
                                         <div className="flex items-center justify-between mb-3">
-                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+                                            <h4 className="text-[11px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">
                                                 {t('proxy.config.zai.models.title')}
                                             </h4>
                                             <button
@@ -1095,7 +1095,7 @@ print(response.text)`;
                             <div className="p-3 space-y-3">
                                 {/* 分组映射区域 */}
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest mb-2 flex items-center gap-2">
                                         <Layers size={14} /> {t('proxy.router.group_title')}
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -1111,7 +1111,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
                                                 value={appConfig.proxy.anthropic_mapping?.["claude-4.5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('anthropic', 'claude-4.5-series', e.target.value)}
                                             >
@@ -1147,7 +1147,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
                                                 value={appConfig.proxy.anthropic_mapping?.["claude-3.5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('anthropic', 'claude-3.5-series', e.target.value)}
                                             >
@@ -1183,7 +1183,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-4-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-4-series', e.target.value)}
                                             >
@@ -1209,7 +1209,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-4o-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-4o-series', e.target.value)}
                                             >
@@ -1235,7 +1235,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-5-series', e.target.value)}
                                             >
@@ -1254,14 +1254,14 @@ print(response.text)`;
                                 {/* 精确映射管理 */}
                                 <div className="pt-4 border-t border-gray-100 dark:border-base-200">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                        <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest flex items-center gap-2">
                                             <ArrowRight size={14} /> {t('proxy.router.expert_title')}
                                         </h3>
                                     </div>
                                     <div className="flex flex-col lg:flex-row gap-6">
                                         {/* 添加映射表单 */}
                                         <div className="flex-1 flex flex-col gap-3">
-                                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                 <Target size={12} />
                                                 <span>{t('proxy.router.add_mapping')}</span>
                                             </div>
@@ -1298,13 +1298,13 @@ print(response.text)`;
                                         {/* 自定义精确映射表格 */}
                                         <div className="flex-1 min-w-[300px] flex flex-col">
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                                     {t('proxy.router.current_list')}
                                                 </span>
                                             </div>
                                             <div className="flex-1 overflow-y-auto max-h-[140px] border border-gray-100 dark:border-base-200 rounded-lg bg-gray-50/30 dark:bg-base-200/30">
                                                 <table className="table table-xs w-full bg-white dark:bg-base-100">
-                                                    <thead className="sticky top-0 bg-gray-50/95 dark:bg-base-200/95 backdrop-blur shadow-sm z-10 text-gray-500 dark:text-gray-400">
+                                                    <thead className="sticky top-0 bg-gray-50/95 dark:bg-gray-800 backdrop-blur shadow-sm z-10 text-gray-600 dark:text-gray-200">
                                                         <tr>
                                                             <th className="text-[10px] py-2 font-medium">{t('proxy.router.original_id')}</th>
                                                             <th className="text-[10px] py-2 font-medium">{t('proxy.router.route_to')}</th>
@@ -1448,7 +1448,7 @@ print(response.text)`;
                                 <div className="col-span-2 p-0">
                                     <div className="overflow-x-auto">
                                         <table className="table w-full">
-                                            <thead className="bg-gray-50/50 dark:bg-base-200/50 text-gray-500 dark:text-gray-400">
+                                            <thead className="bg-gray-50/50 dark:bg-gray-800 text-gray-600 dark:text-gray-200">
                                                 <tr>
                                                     <th className="w-10 pl-3"></th>
                                                     <th className="text-[11px] font-medium">{t('proxy.supported_models.model_name')}</th>
@@ -1466,8 +1466,8 @@ print(response.text)`;
                                                     >
                                                         <td className="pl-4 text-blue-500">{m.icon}</td>
                                                         <td className="font-bold text-xs">{m.name}</td>
-                                                        <td className="font-mono text-[10px] text-gray-500">{m.id}</td>
-                                                        <td className="text-[10px] text-gray-400 hidden sm:table-cell">{m.desc}</td>
+                                                        <td className="font-mono text-[10px] text-gray-500 dark:text-gray-400">{m.id}</td>
+                                                        <td className="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:table-cell">{m.desc}</td>
                                                         <td className="text-center">
                                                             <button
                                                                 className="btn btn-ghost btn-xs text-blue-500"
