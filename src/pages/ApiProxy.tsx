@@ -765,7 +765,7 @@ print(response.text)`;
                                                         auth_mode: e.target.value as ProxyConfig['auth_mode'],
                                                     })
                                                 }
-                                                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-base-200 rounded-lg bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full px-3 py-1.5 border border-gray-300 dark:border-base-200 rounded-lg bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             >
                                                 <option value="off">{t('proxy.config.auth.modes.off')}</option>
                                                 <option value="strict">{t('proxy.config.auth.modes.strict')}</option>
@@ -864,7 +864,7 @@ print(response.text)`;
                                                 {t('proxy.config.zai.dispatch_mode')}
                                             </label>
                                             <select
-                                                className="select select-sm select-bordered w-full text-xs"
+                                                className="select select-sm select-bordered w-full text-xs px-3"
                                                 value={appConfig.proxy.zai?.dispatch_mode || 'off'}
                                                 onChange={(e) => updateZaiGeneralConfig({ dispatch_mode: e.target.value as any })}
                                             >
@@ -918,7 +918,7 @@ print(response.text)`;
                                                     <div className="flex gap-1">
                                                         {zaiModelOptions.length > 0 && (
                                                             <select
-                                                                className="select select-xs select-bordered max-w-[80px]"
+                                                                className="select select-xs select-bordered max-w-[80px] px-2"
                                                                 value=""
                                                                 onChange={(e) => e.target.value && updateZaiDefaultModels({ [family]: e.target.value })}
                                                             >
@@ -951,7 +951,7 @@ print(response.text)`;
                                                         <div className="flex-[1.5] flex gap-1">
                                                             {zaiModelOptions.length > 0 && (
                                                                 <select
-                                                                    className="select select-xs select-ghost h-6 min-h-0 px-1"
+                                                                    className="select select-xs select-ghost h-6 min-h-0 px-2"
                                                                     value=""
                                                                     onChange={(e) => e.target.value && upsertZaiModelMapping(from, e.target.value)}
                                                                 >
@@ -1071,7 +1071,7 @@ print(response.text)`;
                 {
                     appConfig && (
                         <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200 overflow-hidden">
-                            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/50">
+                            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-gray-800">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h2 className="text-base font-bold flex items-center gap-2 text-gray-900 dark:text-base-content">
@@ -1111,7 +1111,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
                                                 value={appConfig.proxy.anthropic_mapping?.["claude-4.5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('anthropic', 'claude-4.5-series', e.target.value)}
                                             >
@@ -1147,7 +1147,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
                                                 value={appConfig.proxy.anthropic_mapping?.["claude-3.5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('anthropic', 'claude-3.5-series', e.target.value)}
                                             >
@@ -1183,7 +1183,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-4-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-4-series', e.target.value)}
                                             >
@@ -1209,7 +1209,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-4o-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-4o-series', e.target.value)}
                                             >
@@ -1235,7 +1235,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-5-series', e.target.value)}
                                             >
