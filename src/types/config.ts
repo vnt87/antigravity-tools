@@ -17,6 +17,14 @@ export interface ProxyConfig {
     enable_logging: boolean;
     upstream_proxy: UpstreamProxyConfig;
     zai?: ZaiConfig;
+    scheduling?: StickySessionConfig;
+}
+
+export type SchedulingMode = 'CacheFirst' | 'Balance' | 'PerformanceFirst';
+
+export interface StickySessionConfig {
+    mode: SchedulingMode;
+    max_wait_seconds: number;
 }
 
 export type ZaiDispatchMode = 'off' | 'exclusive' | 'pooled' | 'fallback';
@@ -53,6 +61,7 @@ export interface AppConfig {
     sync_interval: number;
     default_export_path?: string;
     antigravity_executable?: string; // [NEW] Manually specified Antigravity executable path
+    antigravity_args?: string[]; // [NEW] Antigravity startup args
     auto_launch?: boolean; // Auto launch on startup
     accounts_page_size?: number; // Number of accounts per page, default 0 means auto calculation
     proxy: ProxyConfig;

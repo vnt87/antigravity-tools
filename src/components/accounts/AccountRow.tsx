@@ -1,4 +1,4 @@
-import { ArrowRightLeft, RefreshCw, Trash2, Download, Info, Lock, Ban, Diamond, Gem, Circle, Clock } from 'lucide-react';
+import { ArrowRightLeft, RefreshCw, Trash2, Download, Info, Lock, Ban, Diamond, Gem, Circle, Clock, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Account } from '../../types/account';
 import { getQuotaColor, formatTimeRemaining, getTimeRemainingColor } from '../../utils/format';
 import { cn } from '../../utils/cn';
@@ -16,9 +16,12 @@ interface AccountRowProps {
     onViewDetails: () => void;
     onExport: () => void;
     onDelete: () => void;
+    onToggleProxy: () => void;
 }
 
-function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete }: AccountRowProps) {
+
+
+function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete, onToggleProxy }: AccountRowProps) {
     const { t } = useTranslation();
     const geminiProModel = account.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-pro-high');
     const geminiFlashModel = account.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-flash');
@@ -87,6 +90,16 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
                             >
                                 <Ban className="w-2.5 h-2.5" />
                                 <span>{t('accounts.disabled')}</span>
+                            </span>
+                        )}
+
+                        {account.proxy_disabled && (
+                            <span
+                                className="px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-orange-200/50"
+                                title={account.proxy_disabled_reason || t('accounts.proxy_disabled_tooltip')}
+                            >
+                                <Ban className="w-2.5 h-2.5" />
+                                <span>{t('accounts.proxy_disabled')}</span>
                             </span>
                         )}
 
@@ -299,6 +312,22 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
                         title={t('common.export')}
                     >
                         <Download className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        className={cn(
+                            "p-1.5 rounded-lg transition-all",
+                            account.proxy_disabled
+                                ? "text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30"
+                                : "text-gray-500 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/30"
+                        )}
+                        onClick={(e) => { e.stopPropagation(); onToggleProxy(); }}
+                        title={account.proxy_disabled ? t('accounts.enable_proxy') : t('accounts.disable_proxy')}
+                    >
+                        {account.proxy_disabled ? (
+                            <ToggleRight className="w-3.5 h-3.5" />
+                        ) : (
+                            <ToggleLeft className="w-3.5 h-3.5" />
+                        )}
                     </button>
                     <button
                         className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"

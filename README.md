@@ -1,4 +1,3 @@
-# Antigravity Tools 🚀
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -8,7 +7,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-3.3.7-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-3.3.12-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -156,7 +155,7 @@ Do cơ chế bảo mật của macOS, các ứng dụng không được tải xu
 2.  **Mẹo cài đặt Homebrew**:
     Nếu bạn cài đặt bằng brew, bạn có thể thêm tham số `--no-quarantine` để tránh vấn đề này:
     ```bash
-    brew install --cask --no-quarantine antigravity
+    brew install --cask --no-quarantine antigravity-tools
     ```
 
 ## 🔌 Ví dụ kết nối nhanh
@@ -204,6 +203,22 @@ print(response.choices[0].message.content)
 ## 📝 Nhà phát triển và Cộng đồng
 
 *   **Nhật ký thay đổi (Changelog)**:
+    *   **v3.3.12 (2026-01-02)**:
+        - **Sửa lỗi nghiêm trọng**: Khắc phục lỗi Chữ ký Antigravity Thinking và phân loại sai tác vụ nền.
+    *   **v3.3.11 (2026-01-02)**:
+        - **Tương thích Cherry Studio**: Sửa lỗi tương thích Gemini 3.
+        - **Sửa lỗi Python Client**: Khắc phục crash do maxOutputTokens.
+        - **Tối ưu hóa**: Hệ thống Backoff thống nhất, Hỗ trợ Scoop, Tối ưu CORS, Sắp xếp tài khoản.
+    *   **v3.3.10 (2026-01-01)**:
+        - **Fallback Upstream**: Tự động chuyển đổi điểm cuối.
+        - **Tối ưu Log**: Giảm nhiễu, phân cấp log.
+        - **Imagen 3**: Hỗ trợ 2k & siêu rộng.
+        - **Model Detect API** & **Vô hiệu hóa tài khoản**.
+    *   **v3.3.9 (2026-01-01)**:
+        - **Đồng bộ Scheduling Mode (OpenAI/Claude/Gemini)**.
+        - **Vân tay Session** & **Giới hạn tốc độ toàn cầu**.
+    *   **v3.3.8 (2025-12-31)**:
+        - **Giám sát Proxy**, **Zai Dispatcher**, **Xử lý tài khoản lỗi**, **API danh sách model động**.
     *   **v3.3.7 (2025-12-30)**:
         - **Sửa lỗi ổn định cốt lõi của Proxy (Cảm ơn @llsenyue PR #191)**:
             - **Làm cứng JSON Schema**: Thực hiện làm phẳng và dọn dẹp đệ quy Schema gọi công cụ, tự động chuyển các ràng buộc không hỗ trợ (như `pattern`) sang trường mô tả, giải quyết triệt để lỗi từ chối Schema.
