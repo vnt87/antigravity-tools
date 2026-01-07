@@ -7,7 +7,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-3.3.12-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-3.3.15-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -203,6 +203,15 @@ print(response.choices[0].message.content)
 ## 📝 Nhà phát triển và Cộng đồng
 
 *   **Nhật ký thay đổi (Changelog)**:
+    *   **v3.3.15 (2026-01-04)**:
+        - **Tăng cường tương thích Claude**: Sửa lỗi Opus 4.5, xác thực chữ ký Function call, và dọn dẹp `cache_control`.
+    *   **v3.3.14 (2026-01-03)**:
+        - **Cải thiện ổn định Claude**: Tối ưu hóa xác thực Thinking Block và tương thích Tool/Function call.
+        - **Cơ chế phục hồi lỗi SSE**: Theo dõi và xử lý lỗi luồng phản hồi tốt hơn.
+        - **Sửa lỗi thống kê Dashboard**: Hiển thị chính xác số lượng tài khoản hạn ngạch thấp.
+    *   **v3.3.13 (2026-01-03)**:
+        - **Sửa lỗi chế độ Thinking**: Xử lý ổn định các trường hợp nội dung rỗng và chuyển đổi mô hình.
+        - **Tối ưu hóa giới hạn tốc độ**: Sửa lỗi phân tích thời gian `quotaResetDelay` từ Google API.
     *   **v3.3.12 (2026-01-02)**:
         - **Sửa lỗi nghiêm trọng**: Khắc phục lỗi Chữ ký Antigravity Thinking và phân loại sai tác vụ nền.
     *   **v3.3.11 (2026-01-02)**:
