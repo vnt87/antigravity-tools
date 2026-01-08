@@ -24,8 +24,11 @@ import {
     Layers,
     Activity
 } from 'lucide-react';
-import { AppConfig, ProxyConfig } from '../types/config';
+import { AppConfig, ProxyConfig, StickySessionConfig } from '../types/config';
 import HelpTooltip from '../components/common/HelpTooltip';
+import ModalDialog from '../components/common/ModalDialog';
+import { showToast } from '../components/common/ToastContainer';
+import { cn } from '../utils/cn';
 
 interface ProxyStatus {
     running: boolean;
@@ -58,7 +61,7 @@ function CollapsibleCard({
     const { t } = useTranslation();
 
     return (
-        <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200 overflow-hidden transition-all duration-200 hover:shadow-md">
+        <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden transition-all duration-200 hover:shadow-md">
             <div
                 className="px-5 py-4 flex items-center justify-between cursor-pointer bg-gray-50/50 dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 onClick={(e) => {
@@ -68,14 +71,14 @@ function CollapsibleCard({
                 }}
             >
                 <div className="flex items-center gap-3">
-                    <div className="text-gray-500 dark:text-gray-300">
+                    <div className="text-gray-500 dark:text-gray-400">
                         {icon}
                     </div>
-                    <span className="font-medium text-sm text-gray-900 dark:text-white">
+                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
                         {title}
                     </span>
                     {enabled !== undefined && (
-                        <div className={`text-xs px-2 py-0.5 rounded-full ${enabled ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
+                        <div className={cn('text-xs px-2 py-0.5 rounded-full', enabled ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-600/50 dark:text-gray-300')}>
                             {enabled ? t('common.enabled') : t('common.disabled')}
                         </div>
                     )}
@@ -96,7 +99,7 @@ function CollapsibleCard({
                     )}
 
                     <button
-                        className={`p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                        className={cn('p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-all duration-200', isExpanded ? 'rotate-180' : '')}
                     >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="m6 9 6 6 6-6" />
@@ -112,9 +115,9 @@ function CollapsibleCard({
                 <div className="p-5 relative">
                     {/* Overlay when disabled */}
                     {enabled === false && (
-                        <div className="absolute inset-0 bg-white/60 dark:bg-base-100/60 z-10 cursor-not-allowed" />
+                        <div className="absolute inset-0 bg-gray-100/40 dark:bg-black/30 z-10 cursor-not-allowed" />
                     )}
-                    <div className={enabled === false ? 'opacity-50 pointer-events-none select-none filter blur-[0.5px]' : ''}>
+                    <div className={enabled === false ? 'opacity-60 pointer-events-none select-none' : ''}>
                         {children}
                     </div>
                 </div>
@@ -219,6 +222,11 @@ export default function ApiProxy() {
     const [zaiNewMappingFrom, setZaiNewMappingFrom] = useState('');
     const [zaiNewMappingTo, setZaiNewMappingTo] = useState('');
 
+    // Modal states
+    const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+    const [isRegenerateKeyConfirmOpen, setIsRegenerateKeyConfirmOpen] = useState(false);
+    const [isClearBindingsConfirmOpen, setIsClearBindingsConfirmOpen] = useState(false);
+
     const zaiModelOptions = useMemo(() => {
         const unique = new Set(zaiAvailableModels);
         return Array.from(unique).sort();
@@ -260,7 +268,7 @@ export default function ApiProxy() {
             setAppConfig(newConfig);
         } catch (error) {
             console.error('保存配置失败:', error);
-            alert('保存配置失败: ' + error);
+            showToast(`${t('common.error')}: ${error}`, 'error');
         }
     };
 
@@ -285,8 +293,14 @@ export default function ApiProxy() {
         }
     };
 
-    const handleResetMapping = async () => {
-        if (!appConfig || !confirm('确定要重置所有模型映射为系统默认吗？')) return;
+    const handleResetMapping = () => {
+        if (!appConfig) return;
+        setIsResetConfirmOpen(true);
+    };
+
+    const executeResetMapping = async () => {
+        if (!appConfig) return;
+        setIsResetConfirmOpen(false);
 
         // 恢复到默认映射值
         const newConfig = {
@@ -306,9 +320,28 @@ export default function ApiProxy() {
         try {
             await invoke('update_model_mapping', { config: newConfig });
             setAppConfig({ ...appConfig, proxy: newConfig });
+            showToast(t('common.success'), 'success');
         } catch (error) {
             console.error('Failed to reset mapping:', error);
+            showToast(`${t('common.error')}: ${error}`, 'error');
         }
+    };
+
+    // 一键添加 Haiku 优化映射
+    const handleAddHaikuOptimization = async () => {
+        const originalModel = 'claude-haiku-4-5-20251001';
+        const targetModel = 'gemini-2.5-flash-lite';
+
+        // 调用现有的 handleMappingUpdate 函数
+        await handleMappingUpdate('custom', originalModel, targetModel);
+
+        // 滚动到自定义映射列表 (可选,提升 UX)
+        setTimeout(() => {
+            const customListElement = document.querySelector('[data-custom-mapping-list]');
+            if (customListElement) {
+                customListElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, 100);
     };
 
     const handleRemoveCustomMapping = async (key: string) => {
@@ -334,6 +367,36 @@ export default function ApiProxy() {
             }
         };
         saveConfig(newConfig);
+    };
+
+    const updateSchedulingConfig = (updates: Partial<StickySessionConfig>) => {
+        if (!appConfig) return;
+        const currentScheduling = appConfig.proxy.scheduling || { mode: 'Balance', max_wait_seconds: 60 };
+        const newScheduling = { ...currentScheduling, ...updates };
+
+        const newAppConfig = {
+            ...appConfig,
+            proxy: {
+                ...appConfig.proxy,
+                scheduling: newScheduling
+            }
+        };
+        saveConfig(newAppConfig);
+    };
+
+    const handleClearSessionBindings = () => {
+        setIsClearBindingsConfirmOpen(true);
+    };
+
+    const executeClearSessionBindings = async () => {
+        setIsClearBindingsConfirmOpen(false);
+        try {
+            await invoke('clear_proxy_session_bindings');
+            showToast(t('common.success'), 'success');
+        } catch (error) {
+            console.error('Failed to clear session bindings:', error);
+            showToast(`${t('common.error')}: ${error}`, 'error');
+        }
     };
 
     const refreshZaiModels = async () => {
@@ -434,21 +497,25 @@ export default function ApiProxy() {
             }
             await loadStatus();
         } catch (error: any) {
-            alert(t('proxy.dialog.operate_failed', { error }));
+            showToast(t('proxy.dialog.operate_failed', { error: error.toString() }), 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGenerateApiKey = async () => {
-        if (confirm(t('proxy.dialog.confirm_regenerate'))) {
-            try {
-                const newKey = await invoke<string>('generate_api_key');
-                updateProxyConfig({ api_key: newKey });
-            } catch (error) {
-                console.error('生成 API Key 失败:', error);
-                alert(t('proxy.dialog.operate_failed', { error }));
-            }
+    const handleGenerateApiKey = () => {
+        setIsRegenerateKeyConfirmOpen(true);
+    };
+
+    const executeGenerateApiKey = async () => {
+        setIsRegenerateKeyConfirmOpen(false);
+        try {
+            const newKey = await invoke<string>('generate_api_key');
+            updateProxyConfig({ api_key: newKey });
+            showToast(t('common.success'), 'success');
+        } catch (error: any) {
+            console.error('生成 API Key 失败:', error);
+            showToast(t('proxy.dialog.operate_failed', { error: error.toString() }), 'error');
         }
     };
 
@@ -617,7 +684,7 @@ print(response.text)`;
                                             <HelpTooltip
                                                 text={t('proxy.config.port_tooltip')}
                                                 ariaLabel={t('proxy.config.port')}
-                                                placement="top"
+                                                placement="right"
                                             />
                                         </span>
                                     </label>
@@ -675,7 +742,7 @@ print(response.text)`;
                                             <HelpTooltip
                                                 text={t('proxy.config.auto_start_tooltip')}
                                                 ariaLabel={t('proxy.config.auto_start')}
-                                                placement="top"
+                                                placement="right"
                                             />
                                         </span>
                                     </label>
@@ -694,7 +761,7 @@ print(response.text)`;
                                                 <HelpTooltip
                                                     text={t('proxy.config.allow_lan_access_tooltip')}
                                                     ariaLabel={t('proxy.config.allow_lan_access')}
-                                                    placement="top"
+                                                    placement="right"
                                                 />
                                             </span>
                                             <input
@@ -773,7 +840,7 @@ print(response.text)`;
                                                         auth_mode: e.target.value as ProxyConfig['auth_mode'],
                                                     })
                                                 }
-                                                className="w-full px-3 py-1.5 border border-gray-300 dark:border-base-200 rounded-lg bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-base-200 rounded-lg bg-white dark:bg-base-200 text-xs text-gray-900 dark:text-base-content focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                             >
                                                 <option value="off">{t('proxy.config.auth.modes.off')}</option>
                                                 <option value="strict">{t('proxy.config.auth.modes.strict')}</option>
@@ -796,7 +863,7 @@ print(response.text)`;
                                         <HelpTooltip
                                             text={t('proxy.config.api_key_tooltip')}
                                             ariaLabel={t('proxy.config.api_key')}
-                                            placement="top"
+                                            placement="right"
                                         />
                                     </span>
                                 </label>
@@ -840,7 +907,7 @@ print(response.text)`;
                 {
                     appConfig && (
                         <div className="space-y-4">
-                            <div className="px-1 flex items-center gap-2 text-gray-500 dark:text-gray-300">
+                            <div className="px-1 flex items-center gap-2 text-gray-400">
                                 <Layers size={14} />
                                 <span className="text-[10px] font-bold uppercase tracking-widest">
                                     {t('proxy.config.external_providers.title', { defaultValue: 'External Providers' })}
@@ -872,7 +939,7 @@ print(response.text)`;
                                                 {t('proxy.config.zai.dispatch_mode')}
                                             </label>
                                             <select
-                                                className="select select-sm select-bordered w-full text-xs px-3"
+                                                className="select select-sm select-bordered w-full text-xs"
                                                 value={appConfig.proxy.zai?.dispatch_mode || 'off'}
                                                 onChange={(e) => updateZaiGeneralConfig({ dispatch_mode: e.target.value as any })}
                                             >
@@ -906,7 +973,7 @@ print(response.text)`;
                                     {/* Model Mapping Section */}
                                     <div className="pt-4 border-t border-gray-100 dark:border-base-200">
                                         <div className="flex items-center justify-between mb-3">
-                                            <h4 className="text-[11px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">
+                                            <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                                                 {t('proxy.config.zai.models.title')}
                                             </h4>
                                             <button
@@ -926,7 +993,7 @@ print(response.text)`;
                                                     <div className="flex gap-1">
                                                         {zaiModelOptions.length > 0 && (
                                                             <select
-                                                                className="select select-xs select-bordered max-w-[80px] px-2"
+                                                                className="select select-xs select-bordered max-w-[80px]"
                                                                 value=""
                                                                 onChange={(e) => e.target.value && updateZaiDefaultModels({ [family]: e.target.value })}
                                                             >
@@ -959,7 +1026,7 @@ print(response.text)`;
                                                         <div className="flex-[1.5] flex gap-1">
                                                             {zaiModelOptions.length > 0 && (
                                                                 <select
-                                                                    className="select select-xs select-ghost h-6 min-h-0 px-2"
+                                                                    className="select select-xs select-ghost h-6 min-h-0 px-1"
                                                                     value=""
                                                                     onChange={(e) => e.target.value && upsertZaiModelMapping(from, e.target.value)}
                                                                 >
@@ -1017,10 +1084,10 @@ print(response.text)`;
                                 enabled={!!appConfig.proxy.zai?.mcp?.enabled}
                                 onToggle={(checked) => updateZaiGeneralConfig({ mcp: { ...(appConfig.proxy.zai?.mcp || {}), enabled: checked } as any })}
                                 rightElement={
-                                    <div className="flex gap-2 text-[10px] text-gray-400">
+                                    <div className="flex gap-2 text-[10px]">
                                         {['web_search', 'web_reader', 'vision'].map(f =>
                                             appConfig.proxy.zai?.mcp?.[(f + '_enabled') as keyof typeof appConfig.proxy.zai.mcp] && (
-                                                <span key={f} className="bg-gray-100 dark:bg-base-200 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-400">
+                                                <span key={f} className="bg-blue-500 dark:bg-blue-600 px-1.5 py-0.5 rounded text-white font-semibold shadow-sm">
                                                     {t(`proxy.config.zai.mcp.${f}`).split(' ')[0]}
                                                 </span>
                                             )
@@ -1033,7 +1100,7 @@ print(response.text)`;
                                         <label className="flex items-center gap-2 border border-gray-100 dark:border-base-200 p-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-base-200/50 transition-colors">
                                             <input
                                                 type="checkbox"
-                                                className="checkbox checkbox-xs checkbox-primary rounded-md"
+                                                className="checkbox checkbox-xs rounded border-2 border-gray-400 dark:border-gray-500 checked:border-blue-600 checked:bg-blue-600 [--chkbg:theme(colors.blue.600)] [--chkfg:white]"
                                                 checked={!!appConfig.proxy.zai?.mcp?.web_search_enabled}
                                                 onChange={(e) => updateZaiGeneralConfig({ mcp: { ...(appConfig.proxy.zai?.mcp || {}), web_search_enabled: e.target.checked } as any })}
                                             />
@@ -1042,7 +1109,7 @@ print(response.text)`;
                                         <label className="flex items-center gap-2 border border-gray-100 dark:border-base-200 p-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-base-200/50 transition-colors">
                                             <input
                                                 type="checkbox"
-                                                className="checkbox checkbox-xs checkbox-primary rounded-md"
+                                                className="checkbox checkbox-xs rounded border-2 border-gray-400 dark:border-gray-500 checked:border-blue-600 checked:bg-blue-600 [--chkbg:theme(colors.blue.600)] [--chkfg:white]"
                                                 checked={!!appConfig.proxy.zai?.mcp?.web_reader_enabled}
                                                 onChange={(e) => updateZaiGeneralConfig({ mcp: { ...(appConfig.proxy.zai?.mcp || {}), web_reader_enabled: e.target.checked } as any })}
                                             />
@@ -1051,7 +1118,7 @@ print(response.text)`;
                                         <label className="flex items-center gap-2 border border-gray-100 dark:border-base-200 p-2 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-base-200/50 transition-colors">
                                             <input
                                                 type="checkbox"
-                                                className="checkbox checkbox-xs checkbox-primary rounded-md"
+                                                className="checkbox checkbox-xs rounded border-2 border-gray-400 dark:border-gray-500 checked:border-blue-600 checked:bg-blue-600 [--chkbg:theme(colors.blue.600)] [--chkfg:white]"
                                                 checked={!!appConfig.proxy.zai?.mcp?.vision_enabled}
                                                 onChange={(e) => updateZaiGeneralConfig({ mcp: { ...(appConfig.proxy.zai?.mcp || {}), vision_enabled: e.target.checked } as any })}
                                             />
@@ -1060,7 +1127,7 @@ print(response.text)`;
                                     </div>
 
                                     {appConfig.proxy.zai?.mcp?.enabled && (
-                                        <div className="bg-gray-50 dark:bg-base-200/50 rounded-lg p-3 text-[10px] font-mono text-gray-500">
+                                        <div className="bg-slate-100 dark:bg-slate-800/80 rounded-lg p-3 text-[10px] font-mono text-slate-600 dark:text-slate-400">
                                             <div className="mb-1 font-bold text-gray-400 uppercase tracking-wider">{t('proxy.config.zai.mcp.local_endpoints')}</div>
                                             <div className="space-y-0.5 select-all">
                                                 {appConfig.proxy.zai?.mcp?.web_search_enabled && <div>http://127.0.0.1:{status.running ? status.port : (appConfig.proxy.port || 8045)}/mcp/web_search_prime/mcp</div>}
@@ -1071,6 +1138,99 @@ print(response.text)`;
                                     )}
                                 </div>
                             </CollapsibleCard>
+
+                            {/* Account Scheduling & Rotation */}
+                            <CollapsibleCard
+                                title={t('proxy.config.scheduling.title')}
+                                icon={<RefreshCw size={18} className="text-indigo-500" />}
+                            >
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 inline-flex items-center gap-1">
+                                                    {t('proxy.config.scheduling.mode')}
+                                                    <HelpTooltip
+                                                        text={t('proxy.config.scheduling.mode_tooltip')}
+                                                        placement="right"
+                                                    />
+                                                </label>
+                                                <button
+                                                    onClick={handleClearSessionBindings}
+                                                    className="text-[10px] text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                                                >
+                                                    <Trash2 size={12} />
+                                                    {t('proxy.config.scheduling.clear_bindings')}
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-2">
+                                                {(['CacheFirst', 'Balance', 'PerformanceFirst'] as const).map(mode => (
+                                                    <label
+                                                        key={mode}
+                                                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${(appConfig.proxy.scheduling?.mode || 'Balance') === mode
+                                                            ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-900/10'
+                                                            : 'border-gray-100 dark:border-base-200 hover:border-indigo-200'
+                                                            }`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            className="radio radio-xs radio-primary mt-1"
+                                                            checked={(appConfig.proxy.scheduling?.mode || 'Balance') === mode}
+                                                            onChange={() => updateSchedulingConfig({ mode })}
+                                                        />
+                                                        <div className="space-y-1">
+                                                            <div className="text-xs font-bold text-gray-900 dark:text-base-content">
+                                                                {t(`proxy.config.scheduling.modes.${mode}`)}
+                                                            </div>
+                                                            <div className="text-[10px] text-gray-500 line-clamp-2">
+                                                                {t(`proxy.config.scheduling.modes_desc.${mode}`, {
+                                                                    defaultValue: mode === 'CacheFirst' ? 'Binds session to account, waits precisely if limited (Maximizes Prompt Cache hits).' :
+                                                                        mode === 'Balance' ? 'Binds session, auto-switches to available account if limited (Balanced cache & availability).' :
+                                                                            'No session binding, pure round-robin rotation (Best for high concurrency).'
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 pt-1">
+                                            <div className="bg-slate-100 dark:bg-slate-800/80 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 inline-flex items-center gap-1">
+                                                        {t('proxy.config.scheduling.max_wait')}
+                                                        <HelpTooltip text={t('proxy.config.scheduling.max_wait_tooltip')} />
+                                                    </label>
+                                                    <span className="text-xs font-mono text-indigo-600 font-bold">
+                                                        {appConfig.proxy.scheduling?.max_wait_seconds || 60}s
+                                                    </span>
+                                                </div>
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="300"
+                                                    step="10"
+                                                    disabled={(appConfig.proxy.scheduling?.mode || 'Balance') !== 'CacheFirst'}
+                                                    className="range range-indigo range-xs"
+                                                    value={appConfig.proxy.scheduling?.max_wait_seconds || 60}
+                                                    onChange={(e) => updateSchedulingConfig({ max_wait_seconds: parseInt(e.target.value) })}
+                                                />
+                                                <div className="flex justify-between px-1 mt-1 text-[10px] text-gray-400 font-mono">
+                                                    <span>0s</span>
+                                                    <span>300s</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl">
+                                                <p className="text-[10px] text-amber-700 dark:text-amber-500 leading-relaxed">
+                                                    <strong>{t('common.info')}:</strong> {t('proxy.config.scheduling.subtitle')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CollapsibleCard>
                         </div>
                     )
                 }
@@ -1079,7 +1239,7 @@ print(response.text)`;
                 {
                     appConfig && (
                         <div className="bg-white dark:bg-base-100 rounded-xl shadow-sm border border-gray-100 dark:border-base-200 overflow-hidden">
-                            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-gray-800">
+                            <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h2 className="text-base font-bold flex items-center gap-2 text-gray-900 dark:text-base-content">
@@ -1103,7 +1263,7 @@ print(response.text)`;
                             <div className="p-3 space-y-3">
                                 {/* 分组映射区域 */}
                                 <div>
-                                    <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                         <Layers size={14} /> {t('proxy.router.group_title')}
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -1119,7 +1279,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
                                                 value={appConfig.proxy.anthropic_mapping?.["claude-4.5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('anthropic', 'claude-4.5-series', e.target.value)}
                                             >
@@ -1155,7 +1315,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
                                                 value={appConfig.proxy.anthropic_mapping?.["claude-3.5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('anthropic', 'claude-3.5-series', e.target.value)}
                                             >
@@ -1191,7 +1351,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-4-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-4-series', e.target.value)}
                                             >
@@ -1217,7 +1377,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-4o-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-4o-series', e.target.value)}
                                             >
@@ -1243,7 +1403,7 @@ print(response.text)`;
                                                 </div>
                                             </div>
                                             <select
-                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-200 dark:text-gray-100 backdrop-blur-sm px-3"
+                                                className="select select-sm select-bordered w-full font-mono text-[11px] bg-white/80 dark:bg-base-100/80 backdrop-blur-sm"
                                                 value={appConfig.proxy.openai_mapping?.["gpt-5-series"] || ""}
                                                 onChange={(e) => handleMappingUpdate('openai', 'gpt-5-series', e.target.value)}
                                             >
@@ -1261,15 +1421,35 @@ print(response.text)`;
 
                                 {/* 精确映射管理 */}
                                 <div className="pt-4 border-t border-gray-100 dark:border-base-200">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                                             <ArrowRight size={14} /> {t('proxy.router.expert_title')}
                                         </h3>
+                                    </div>
+
+                                    {/* 💡 Haiku 优化提示 */}
+                                    <div className="mb-4 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-2 flex-1">
+                                                <Sparkles size={14} className="text-blue-500 flex-shrink-0" />
+                                                <p className="text-[11px] text-gray-600 dark:text-gray-400">
+                                                    <span className="font-medium text-blue-600 dark:text-blue-400">💰 省钱提示:</span>
+                                                    {' '}Claude CLI 默认使用 <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-mono">claude-haiku-4-5-20251001</code> 处理后台任务,建议映射到廉价 Flash 模型可节省约 95% 成本
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={handleAddHaikuOptimization}
+                                                className="btn btn-ghost btn-xs gap-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 border border-blue-200 dark:border-blue-800 whitespace-nowrap flex-shrink-0"
+                                            >
+                                                <Plus size={12} />
+                                                一键优化
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col lg:flex-row gap-6">
                                         {/* 添加映射表单 */}
                                         <div className="flex-1 flex flex-col gap-3">
-                                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                            <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                                 <Target size={12} />
                                                 <span>{t('proxy.router.add_mapping')}</span>
                                             </div>
@@ -1306,13 +1486,13 @@ print(response.text)`;
                                         {/* 自定义精确映射表格 */}
                                         <div className="flex-1 min-w-[300px] flex flex-col">
                                             <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                                                     {t('proxy.router.current_list')}
                                                 </span>
                                             </div>
-                                            <div className="flex-1 overflow-y-auto max-h-[140px] border border-gray-100 dark:border-base-200 rounded-lg bg-gray-50/30 dark:bg-base-200/30">
+                                            <div className="flex-1 overflow-y-auto max-h-[140px] border border-gray-100 dark:border-base-200 rounded-lg bg-gray-50/30 dark:bg-base-200/30" data-custom-mapping-list>
                                                 <table className="table table-xs w-full bg-white dark:bg-base-100">
-                                                    <thead className="sticky top-0 bg-gray-50/95 dark:bg-gray-800 backdrop-blur shadow-sm z-10 text-gray-600 dark:text-gray-200">
+                                                    <thead className="sticky top-0 bg-gray-50/95 dark:bg-base-200/95 backdrop-blur shadow-sm z-10 text-gray-500 dark:text-gray-400">
                                                         <tr>
                                                             <th className="text-[10px] py-2 font-medium">{t('proxy.router.original_id')}</th>
                                                             <th className="text-[10px] py-2 font-medium">{t('proxy.router.route_to')}</th>
@@ -1456,7 +1636,7 @@ print(response.text)`;
                                 <div className="col-span-2 p-0">
                                     <div className="overflow-x-auto">
                                         <table className="table w-full">
-                                            <thead className="bg-gray-50/50 dark:bg-gray-800 text-gray-600 dark:text-gray-200">
+                                            <thead className="bg-gray-50/50 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
                                                 <tr>
                                                     <th className="w-10 pl-3"></th>
                                                     <th className="text-[11px] font-medium">{t('proxy.supported_models.model_name')}</th>
@@ -1474,8 +1654,8 @@ print(response.text)`;
                                                     >
                                                         <td className="pl-4 text-blue-500">{m.icon}</td>
                                                         <td className="font-bold text-xs">{m.name}</td>
-                                                        <td className="font-mono text-[10px] text-gray-500 dark:text-gray-400">{m.id}</td>
-                                                        <td className="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:table-cell">{m.desc}</td>
+                                                        <td className="font-mono text-[10px] text-gray-500">{m.id}</td>
+                                                        <td className="text-[10px] text-gray-400 hidden sm:table-cell">{m.desc}</td>
                                                         <td className="text-center">
                                                             <button
                                                                 className="btn btn-ghost btn-xs text-blue-500"
@@ -1526,6 +1706,36 @@ print(response.text)`;
                         </div>
                     )
                 }
+                {/* 各种对话框 */}
+                <ModalDialog
+                    isOpen={isResetConfirmOpen}
+                    title={t('proxy.dialog.reset_mapping_title') || '重置映射'}
+                    message={t('proxy.dialog.reset_mapping_msg') || '确定要重置所有模型映射为系统默认吗？'}
+                    type="confirm"
+                    isDestructive={true}
+                    onConfirm={executeResetMapping}
+                    onCancel={() => setIsResetConfirmOpen(false)}
+                />
+
+                <ModalDialog
+                    isOpen={isRegenerateKeyConfirmOpen}
+                    title={t('proxy.dialog.regenerate_key_title') || t('proxy.dialog.confirm_regenerate')}
+                    message={t('proxy.dialog.regenerate_key_msg') || t('proxy.dialog.confirm_regenerate')}
+                    type="confirm"
+                    isDestructive={true}
+                    onConfirm={executeGenerateApiKey}
+                    onCancel={() => setIsRegenerateKeyConfirmOpen(false)}
+                />
+
+                <ModalDialog
+                    isOpen={isClearBindingsConfirmOpen}
+                    title={t('proxy.dialog.clear_bindings_title') || '清除会话绑定'}
+                    message={t('proxy.dialog.clear_bindings_msg') || '确定要清除所有会话与账号的绑定映射吗？'}
+                    type="confirm"
+                    isDestructive={true}
+                    onConfirm={executeClearSessionBindings}
+                    onCancel={() => setIsClearBindingsConfirmOpen(false)}
+                />
             </div >
         </div>
     );

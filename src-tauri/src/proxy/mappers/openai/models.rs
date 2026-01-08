@@ -1,4 +1,4 @@
-// OpenAI Data Models
+// OpenAI 数据模型
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -12,6 +12,8 @@ pub struct OpenAIRequest {
     pub prompt: Option<String>,
     #[serde(default)]
     pub stream: bool,
+    #[serde(default)]
+    pub n: Option<u32>, // [NEW] 支持多候选结果数量
     #[serde(rename = "max_tokens")]
     pub max_tokens: Option<u32>,
     pub temperature: Option<f32>,
@@ -46,9 +48,17 @@ pub enum OpenAIContent {
 #[serde(tag = "type")]
 pub enum OpenAIContentBlock {
     #[serde(rename = "text")]
-    Text { text: String },
+    Text {
+        text: String,
+    },
     #[serde(rename = "image_url")]
-    ImageUrl { image_url: OpenAIImageUrl },
+    ImageUrl {
+        image_url: OpenAIImageUrl,
+    },
+    #[serde(rename = "audio_url")]
+    AudioUrl {
+        audio_url: AudioUrlContent,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -56,6 +66,11 @@ pub struct OpenAIImageUrl {
     pub url: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AudioUrlContent {
+    pub url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

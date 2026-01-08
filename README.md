@@ -7,7 +7,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-3.3.15-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-3.3.16-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -133,7 +133,7 @@ brew tap lbjlaq/antigravity-manager https://github.com/lbjlaq/Antigravity-Manage
 brew install --cask antigravity-tools
 ```
 # Nếu gặp vấn đề về quyền, hãy sử dụng --no-quarantine
-brew install --cask --no-quarantine antigravity
+brew install --cask --no-quarantine antigravity-tools
 ```
 
 ### Tùy chọn B: Tải xuống thủ công
@@ -203,6 +203,14 @@ print(response.choices[0].message.content)
 ## 📝 Nhà phát triển và Cộng đồng
 
 *   **Nhật ký thay đổi (Changelog)**:
+    *   **v3.3.16 (2026-01-07)**:
+        - **Tối ưu hiệu suất**: Làm mới hạn ngạch đồng thời (giảm từ 30s xuống 6s cho 10 tài khoản).
+        - **Cải thiện UI/UX**: Tối ưu giao diện API Proxy, chế độ tối, và chuyển đổi theme.
+        - **Sửa lỗi ổn định**: Sửa Grep/Glob, RedactedThinking, JSON Schema, và 400 auto-retry.
+        - **Hiệu suất cao**: Khắc phục UND_ERR_SOCKET, tối ưu khóa đồng thời, timeout 5s.
+        - **Tối ưu Log**: Giảm 99.9% dung lượng log, tự động dọn log cũ.
+        - **Sửa Gemini 3 Pro Thinking**: Khắc phục lỗi 404 với thinkingBudget.
+        - **Tính năng mới**: Audio transcription API, OpenAI multi-candidate, API monitoring.
     *   **v3.3.15 (2026-01-04)**:
         - **Tăng cường tương thích Claude**: Sửa lỗi Opus 4.5, xác thực chữ ký Function call, và dọn dẹp `cache_control`.
     *   **v3.3.14 (2026-01-03)**:
