@@ -85,6 +85,44 @@ pub fn wrap_request(body: &Value, project_id: &str, mapped_model: &str) -> Value
                  gen_obj.insert("imageConfig".to_string(), image_config);
              }
          }
+    } else {
+        // [NEW] 只在非图像生成模式下注入 Antigravity 身份 (原始简化版)
+        let antigravity_identity = "You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.\n\
+        You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.\n\
+        **Absolute paths only**\n\
+        **Proactiveness**";
+        
+        // [HYBRID] 检查是否已有 systemInstruction
+        if let Some(system_instruction) = inner_request.get_mut("systemInstruction") {
+            // [NEW] 补全 role: user
+            if let Some(obj) = system_instruction.as_object_mut() {
+                if !obj.contains_key("role") {
+                     obj.insert("role".to_string(), json!("user"));
+                }
+            }
+
+            if let Some(parts) = system_instruction.get_mut("parts") {
+                if let Some(parts_array) = parts.as_array_mut() {
+                    // 检查第一个 part 是否已包含 Antigravity 身份
+                    let has_antigravity = parts_array.get(0)
+                        .and_then(|p| p.get("text"))
+                        .and_then(|t| t.as_str())
+                        .map(|s| s.contains("You are Antigravity"))
+                        .unwrap_or(false);
+                    
+                    if !has_antigravity {
+                        // 在前面插入 Antigravity 身份
+                        parts_array.insert(0, json!({"text": antigravity_identity}));
+                    }
+                }
+            }
+        } else {
+            // 没有 systemInstruction,创建一个新的
+            inner_request["systemInstruction"] = json!({
+                "role": "user",
+                "parts": [{"text": antigravity_identity}]
+            });
+        }
     }
 
     let final_request = json!({
@@ -132,5 +170,70 @@ mod tests {
         let result = unwrap_response(&wrapped);
         assert!(result.get("candidates").is_some());
         assert!(result.get("response").is_none());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_antigravity_identity_injection_with_role() {
+        let body = json!({
+            "model": "gemini-pro",
+            "messages": []
+        });
+        
+        let result = wrap_request(&body, "test-proj", "gemini-pro");
+        
+        // 验证 systemInstruction
+        let sys = result.get("request").unwrap().get("systemInstruction").unwrap();
+        
+        // 1. 验证 role: "user"
+        assert_eq!(sys.get("role").unwrap(), "user");
+        
+        // 2. 验证 Antigravity 身份注入
+        let parts = sys.get("parts").unwrap().as_array().unwrap();
+        assert!(!parts.is_empty());
+        let first_text = parts[0].get("text").unwrap().as_str().unwrap();
+        assert!(first_text.contains("You are Antigravity"));
+    }
+
+    #[test]
+    fn test_user_instruction_preservation() {
+        let body = json!({
+            "model": "gemini-pro",
+            "systemInstruction": {
+                "role": "user",
+                "parts": [{"text": "User custom prompt"}]
+            }
+        });
+
+        let result = wrap_request(&body, "test-proj", "gemini-pro");
+        let sys = result.get("request").unwrap().get("systemInstruction").unwrap();
+        let parts = sys.get("parts").unwrap().as_array().unwrap();
+
+        // Should have 2 parts: Antigravity + User
+        assert_eq!(parts.len(), 2);
+        assert!(parts[0].get("text").unwrap().as_str().unwrap().contains("You are Antigravity"));
+        assert_eq!(parts[1].get("text").unwrap().as_str().unwrap(), "User custom prompt");
+    }
+
+    #[test]
+    fn test_duplicate_prevention() {
+        let body = json!({
+            "model": "gemini-pro",
+            "systemInstruction": {
+                "parts": [{"text": "You are Antigravity..."}]
+            }
+        });
+
+        let result = wrap_request(&body, "test-proj", "gemini-pro");
+        let sys = result.get("request").unwrap().get("systemInstruction").unwrap();
+        let parts = sys.get("parts").unwrap().as_array().unwrap();
+
+        // Should NOT inject duplicate, so only 1 part remains
+        assert_eq!(parts.len(), 1);
     }
 }

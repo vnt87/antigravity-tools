@@ -330,9 +330,32 @@ pub fn transform_openai_request(request: &OpenAIRequest, project_id: &str, mappe
         }
     }
     
-    if !system_instructions.is_empty() {
-        inner_request["systemInstruction"] = json!({ "parts": [{"text": system_instructions.join("\n\n")}] });
+    // [NEW] Antigravity 身份指令 (原始简化版)
+    let antigravity_identity = "You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.\n\
+    You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.\n\
+    **Absolute paths only**\n\
+    **Proactiveness**";
+
+    // [HYBRID] 检查用户是否已提供 Antigravity 身份
+    let user_has_antigravity = system_instructions.iter()
+        .any(|s| s.contains("You are Antigravity"));
+
+    let mut parts = Vec::new();
+
+    // 1. Antigravity 身份 (如果需要, 作为独立 Part 插入)
+    if !user_has_antigravity {
+        parts.push(json!({"text": antigravity_identity}));
     }
+
+    // 2. 追加用户指令 (作为独立 Parts)
+    for inst in system_instructions {
+        parts.push(json!({"text": inst}));
+    }
+
+    inner_request["systemInstruction"] = json!({ 
+        "role": "user",
+        "parts": parts 
+    });
     
     if config.inject_google_search {
         crate::proxy::mappers::common_utils::inject_google_search_tool(&mut inner_request);
@@ -403,11 +426,13 @@ mod tests {
                         detail: None 
                     } }
                 ])),
+                reasoning_content: None,
                 tool_calls: None,
                 tool_call_id: None,
                 name: None,
             }],
             stream: false,
+            n: None,
             max_tokens: None,
             temperature: None,
             top_p: None,

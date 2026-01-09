@@ -1,12 +1,13 @@
+import i18n from '../i18n';
 import { request as invoke } from '../utils/request';
 import { Account, QuotaData } from '../types/account';
 
-// Check Tauri environment
+// 检查 Tauri 环境
 function ensureTauriEnvironment() {
-    // Only check if invoke function is available
-    // Do not check __TAURI__ object, as it may not exist in some Tauri versions
+    // 只检查 invoke 函数是否可用
+    // 不检查 __TAURI__ 对象,因为在某些 Tauri 版本中可能不存在
     if (typeof invoke !== 'function') {
-        throw new Error('Tauri API not loaded correctly, please restart the app');
+        throw new Error(i18n.t('common.tauri_api_not_loaded'));
     }
 }
 
@@ -56,14 +57,14 @@ export async function startOAuthLogin(): Promise<Account> {
     try {
         return await invoke('start_oauth_login');
     } catch (error) {
-        // Enhance error message
+        // 增强错误信息
         if (typeof error === 'string') {
-            // If it is a missing refresh_token error, keep it as is (already contains detailed explanation)
+            // 如果是 refresh_token 缺失错误,保持原样(已包含详细说明)
             if (error.includes('Refresh Token') || error.includes('refresh_token')) {
                 throw error;
             }
-            // Add context for other errors
-            throw `OAuth authorization failed: ${error}`;
+            // 其他错误添加上下文
+            throw i18n.t('accounts.add.oauth_error', { error });
         }
         throw error;
     }
@@ -78,7 +79,7 @@ export async function completeOAuthLogin(): Promise<Account> {
             if (error.includes('Refresh Token') || error.includes('refresh_token')) {
                 throw error;
             }
-            throw `OAuth authorization failed: ${error}`;
+            throw i18n.t('accounts.add.oauth_error', { error });
         }
         throw error;
     }
@@ -89,7 +90,7 @@ export async function cancelOAuthLogin(): Promise<void> {
     return await invoke('cancel_oauth_login');
 }
 
-// Import
+// 导入
 export async function importV1Accounts(): Promise<Account[]> {
     return await invoke('import_v1_accounts');
 }

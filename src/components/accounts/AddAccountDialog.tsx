@@ -92,8 +92,8 @@ function AddAccountDialog({ onAdd }: AddAccountDialogProps) {
                     let errorMsg = String(error);
                     if (errorMsg.includes('Refresh Token') || errorMsg.includes('refresh_token')) {
                         setMessage(errorMsg);
-                    } else if (errorMsg.includes('Tauri') || errorMsg.includes('环境')) {
-                        setMessage(`环境错误: ${errorMsg}`);
+                    } else if (errorMsg.includes('Tauri') || errorMsg.toLowerCase().includes('environment') || errorMsg.includes('环境')) {
+                        setMessage(t('common.environment_error', { error: errorMsg }));
                     } else {
                         setMessage(`${t('accounts.add.tabs.oauth')} ${t('common.error')}: ${errorMsg}`);
                     }
@@ -172,9 +172,9 @@ function AddAccountDialog({ onAdd }: AddAccountDialogProps) {
             // 如果是 refresh_token 缺失错误,显示完整信息(包含解决方案)
             if (errorMsg.includes('Refresh Token') || errorMsg.includes('refresh_token')) {
                 setMessage(errorMsg);
-            } else if (errorMsg.includes('Tauri') || errorMsg.includes('环境')) {
+            } else if (errorMsg.includes('Tauri') || errorMsg.toLowerCase().includes('environment') || errorMsg.includes('环境')) {
                 // 环境错误
-                setMessage(`环境错误: ${errorMsg}`);
+                setMessage(t('common.environment_error', { error: errorMsg }));
             } else {
                 // 其他错误
                 setMessage(`${actionName} ${t('common.error')}: ${errorMsg}`);
@@ -354,7 +354,7 @@ function AddAccountDialog({ onAdd }: AddAccountDialogProps) {
             </button>
 
             {isOpen && createPortal(
-                <dialog className="modal modal-open z-[100]">
+                <div className="modal modal-open z-[100]">
                     {/* Draggable Top Region */}
                     <div data-tauri-drag-region className="fixed top-0 left-0 right-0 h-8 z-[110]" />
 
@@ -557,7 +557,7 @@ function AddAccountDialog({ onAdd }: AddAccountDialogProps) {
                         </div>
                     </div>
                     <div className="modal-backdrop bg-black/40 backdrop-blur-sm fixed inset-0 z-[-1]" onClick={() => setIsOpen(false)}></div>
-                </dialog>,
+                </div>,
                 document.body
             )}
         </>
