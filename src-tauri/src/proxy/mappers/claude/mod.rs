@@ -7,12 +7,14 @@ pub mod response;
 pub mod streaming;
 pub mod utils;
 pub mod thinking_utils;
+pub mod collector;
 
 pub use models::*;
 pub use request::transform_claude_request_in;
 pub use response::transform_response;
 pub use streaming::{PartProcessor, StreamingState};
 pub use thinking_utils::close_tool_loop_for_thinking;
+pub use collector::collect_stream_to_json;
 
 use bytes::Bytes;
 use futures::Stream;
@@ -210,6 +212,7 @@ pub fn emit_force_stop(state: &mut StreamingState) -> Vec<Bytes> {
 }
 
 /// Process grounding metadata from Gemini's googleSearch and emit as Claude web_search blocks
+#[allow(dead_code)]
 fn process_grounding_metadata(
     metadata: &serde_json::Value,
     state: &mut StreamingState,

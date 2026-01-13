@@ -64,6 +64,9 @@ pub fn run() {
                 }
             });
             
+            // 启动智能调度器
+            modules::scheduler::start_scheduler(app.handle().clone());
+            
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -86,6 +89,17 @@ pub fn run() {
             commands::delete_accounts,
             commands::reorder_accounts,
             commands::switch_account,
+            // 设备指纹
+            commands::get_device_profiles,
+            commands::bind_device_profile,
+            commands::bind_device_profile_with_profile,
+            commands::preview_generate_profile,
+            commands::apply_device_profile,
+            commands::restore_original_device,
+            commands::list_device_versions,
+            commands::restore_device_version,
+            commands::delete_device_version,
+            commands::open_device_folder,
             commands::get_current_account,
             // 配额命令
             commands::fetch_account_quota,
@@ -110,6 +124,10 @@ pub fn run() {
             commands::get_antigravity_path,
             commands::get_antigravity_args,
             commands::check_for_updates,
+            commands::get_update_settings,
+            commands::save_update_settings,
+            commands::should_check_updates,
+            commands::update_last_check_time,
             commands::toggle_proxy_status,
             // 反代服务命令
             commands::proxy::start_proxy_service,
@@ -117,6 +135,8 @@ pub fn run() {
             commands::proxy::get_proxy_status,
             commands::proxy::get_proxy_stats,
             commands::proxy::get_proxy_logs,
+            commands::proxy::get_proxy_logs_paginated,
+            commands::proxy::get_proxy_log_detail,
             commands::proxy::set_proxy_monitor_enabled,
             commands::proxy::clear_proxy_logs,
             commands::proxy::generate_api_key,
@@ -129,7 +149,22 @@ pub fn run() {
             // Autostart 命令
             commands::autostart::toggle_auto_launch,
             commands::autostart::is_auto_launch_enabled,
+            // 预热命令
+            commands::warm_up_all_accounts,
+            commands::warm_up_account,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Handle macOS dock icon click to reopen window
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                    app_handle.set_activation_policy(tauri::ActivationPolicy::Regular).unwrap_or(());
+                }
+            }
+        });
 }

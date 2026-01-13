@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Proxy System (v3.3.16)
+> Professional AI Account Management & Proxy System (v3.3.24)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-3.3.16-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-3.3.24-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -49,7 +49,7 @@ By leveraging this app, you can transform common Web Sessions (Google/Anthropic)
 *   **Smart Recommendation**: The system uses a real-time algorithm to filter and recommend the "Best Account" based on quota redundancy, supporting **one-click switching**.
 *   **Active Account Snapshot**: Visually displays the specific quota percentage and the last synchronization time of the currently active account.
 
-### 2. 🔐 Professional AI Account Management & Proxy System (v3.3.2)
+### 2. 🔐 Professional AI Account Management & Proxy System (v3.3.24)
 *   **OAuth 2.0 Authorization (Auto/Manual)**: Pre-generates a copyable authorization URL so you can finish auth in any browser; after the callback, the app auto-completes and saves the account (use “I already authorized, continue” if needed).
 *   **Multi-dimensional Import**: Supports single token entry, JSON batch import, and automatic hot migration from V1 legacy databases.
 *   **Gateway-level Views**: Supports switching between "List" and "Grid" views. Provides 403 Forbidden detection, automatically marking and skipping accounts with permission anomalies.
@@ -167,7 +167,69 @@ print(response.choices[0].message.content)
 
 ## 📝 Developer & Community
 
-    *   **v3.3.16 (2026-01-07)**:
+*   **Changelog**:
+    *   **v3.3.24 (2026-01-12)**:
+        - **UI Interaction Improvements**:
+            - **Card-based Model Selection**: Upgraded model selection in "Quota Protection" and "Smart Warmup" to a card-based design with checkmarks for selected states and clear borders for unselected states.
+            - **Layout Optimization**: Adjusted "Smart Warmup" model list from 2 columns to 4 columns for a more compact and organized look.
+            - **Model Name Fix**: Corrected the display name for `claude-sonnet-4-5` from "Claude 3.5 Sonnet" to "Claude 4.5 Sonnet".
+        - **Internationalization (i18n)**:
+            - **Vietnamese Support**: Added Vietnamese localization support (Thank you @ThanhNguyxn PR #570).
+            - **Translation Refinement**: Cleaned up duplicate translation keys and optimized automatic language detection logic.
+    *   **v3.3.23 (2026-01-12)**:
+        - **Update Notification UI Modernization**:
+            - **Visual Upgrade**: Adopts "Glassmorphism" design with elegant gradients and shimmer effects, significantly improving visual quality.
+            - **Smooth Animations**: Introduced smoother entry and exit animations for a better interactive experience.
+            - **Dark Mode Support**: Fully supports Dark Mode, automatically adapting to system theme for eye-friendly viewing.
+            - **Non-intrusive Layout**: Optimized notification positioning and z-index to ensure it doesn't block critical navigation areas.
+        - **Internationalization Support**:
+            - **Bilingual Support**: The update notification now fully supports both English and Chinese, automatically switching based on app language settings.
+        - **Check Logic Fix**: Fixed timing issues with update check status updates, ensuring notifications reliably appear when a new version is detected.
+        - **Menu Bar Icon Resolution Fix**:
+            - **Retina Support**: Upgraded the menu bar tray icon (`tray-icon.png`) resolution from 22x22 to 44x44, completely resolving blurriness on high-DPI displays (Fix Issue #557).
+        - **Claude Thinking Compression Optimization (Core Thanks to @ThanhNguyxn PR #566)**:
+            - **Fixed Thinking Block Reordering**: Resolved an issue where Thinking Blocks could be incorrectly ordered after text blocks when using Context Compression (Kilo).
+            - **Enforced Primary Sorting**: Introduced `sort_thinking_blocks_first` logic to ensure thinking blocks in assistant messages are always placed first, complying with Anthropic API's 400 validation rules.
+        - **Account Routing Priority Enhancement (Core Thanks to @ThanhNguyxn PR #567)**:
+            - **High Quota First Strategy**: Within the same tier (Free/Pro/Ultra), the system now prioritizes accounts with **more remaining quota**.
+            - **Resource Balancing**: Prevents long-quota accounts from being idle while short-quota accounts are exhausted prematurely due to random assignment.
+        - **Non-Streaming Base64 Signature Fix (Core Thanks to @ThanhNguyxn PR #568)**:
+            - **Full Mode Compatibility**: Applied the Base64 thinking signature decoding logic from streaming responses to non-streaming responses.
+            - **Eliminated Signature Errors**: Completely resolved 400 errors caused by inconsistent signature encoding formats when using Antigravity proxy with non-streaming clients (e.g., Python SDK).
+        - **Internationalization (i18n)**:
+            - **Japanese Support**: Added Japanese localization support (Thank you @Koshikai PR #526).
+            - **Turkish Support**: Added Turkish localization support (Thank you @hakanyalitekin PR #515).
+    *   **v3.3.22 (2026-01-12)**:
+        - **Quota Protection System Upgrade**:
+            - Customizable monitored models (`gemini-3-flash`, `gemini-3-pro-high`, `claude-sonnet-4-5`), triggers protection only when selected models fall below threshold
+            - Protection logic optimized to "minimum quota of selected models" trigger mechanism
+            - Auto-selects `claude-sonnet-4-5` when enabling protection, UI enforces at least one model selection
+        - **Automated Quota Management Workflow**:
+            - Enforced background auto-refresh to ensure real-time quota data sync
+            - Automated execution of "Refresh → Protect → Restore → Warmup" complete lifecycle management
+        - **Customizable Smart Warmup**:
+            - Customizable warmup models (`gemini-3-flash`, `gemini-3-pro-high`, `claude-sonnet-4-5`, `gemini-3-pro-image`)
+            - New standalone `SmartWarmup.tsx` component with consistent selection experience as quota protection
+            - Auto-selects all core models when enabling warmup, UI enforces at least one model selection
+            - Scheduler reads config in real-time, changes take effect immediately
+        - **Smart Warmup System Foundation**:
+            - Auto-triggers warmup when quota recovers to 100%
+            - Smart deduplication: only warmup once per 100% cycle
+            - Scheduler scans every 10 minutes and syncs latest quota to frontend
+            - Covers all account types (Ultra/Pro/Free)
+        - **i18n Improvements**: Fixed missing translations for "Auto Check Update" and "Device Fingerprint" (Issue #550)
+        - **Stability Fixes**: Fixed variable reference and ownership conflicts under high-concurrency scheduling
+        - **API Monitor Performance Optimization (Fix Issue #560)**:
+            - **Background**: Fixed 5-10 second response delay and application crash issues when opening the API monitor interface on macOS
+            - **Database Optimization**: Added `status` field index (50x faster stats queries), optimized `get_stats()` from 3 full table scans to 1 (66% faster)
+            - **Paginated Loading**: List view excludes large `request_body`/`response_body` fields (90%+ data reduction), added `get_proxy_logs_paginated` command (20 items/page), frontend "Load More" button
+            - **On-Demand Details**: Added `get_proxy_log_detail` command, queries full data only on click (0.1-0.5s load time)
+            - **Auto Cleanup**: Removes logs older than 30 days on startup, executes VACUUM to reclaim disk space
+            - **UI Enhancements**: Loading indicators, 10-second timeout control, detail modal spinner
+            - **Performance**: Initial load 10-18s → **0.5-1s** (10-36x), memory 1GB → **5MB** (200x), data transfer 1-10GB → **1-5MB** (200-2000x)
+            - **Impact**: Supports smooth viewing of 10,000+ monitoring records
+        - **Log Enhancements**: Fixed account/model logging issues in proxy warmup logic and added missing localization keys.
+    *   **v3.3.21 (2026-01-11)**:
         - **Stability & Tool Fixes**:
             - **Grep/Glob Argument Fix (P3-5)**: Resolved "Error searching files" issue for Grep and Glob tools. Corrected parameter mapping: changed from `paths` (array) to `path` (string), and implemented case-insensitive tool name matching.
             - **RedactedThinking Support (P3-2)**: Gracefully downgrades redacted thinking blocks to text `[Redacted Thinking]`, preserving context instead of dropping data.
@@ -573,6 +635,8 @@ print(response.choices[0].message.content)
 <a href="https://github.com/Jint8888"><img src="https://github.com/Jint8888.png" width="50px" style="border-radius: 50%;" alt="Jint8888"/></a>
 <a href="https://github.com/0-don"><img src="https://github.com/0-don.png" width="50px" style="border-radius: 50%;" alt="0-don"/></a>
 <a href="https://github.com/dlukt"><img src="https://github.com/dlukt.png" width="50px" style="border-radius: 50%;" alt="dlukt"/></a>
+<a href="https://github.com/Koshikai"><img src="https://github.com/Koshikai.png" width="50px" style="border-radius: 50%;" alt="Koshikai"/></a>
+<a href="https://github.com/hakanyalitekin"><img src="https://github.com/hakanyalitekin.png" width="50px" style="border-radius: 50%;" alt="hakanyalitekin"/></a>
 
 Special thanks to all developers who have contributed to this project.
 *   **License**: **CC BY-NC-SA 4.0**. Strictly for non-commercial use.

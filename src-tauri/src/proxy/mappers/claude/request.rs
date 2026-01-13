@@ -106,7 +106,65 @@ fn clean_cache_control_from_messages(messages: &mut [Message]) {
     }
 }
 
+/// [FIX #564] Sort blocks in assistant messages to ensure thinking blocks are first
+/// 
+/// When context compression (kilo) reorders message blocks, thinking blocks may appear
+/// after text blocks. Claude/Anthropic API requires thinking blocks to be first if
+/// any thinking blocks exist in the message. This function pre-sorts blocks to ensure
+/// thinking/redacted_thinking blocks always come before other block types.
+fn sort_thinking_blocks_first(messages: &mut [Message]) {
+    for msg in messages.iter_mut() {
+        if msg.role == "assistant" {
+            if let MessageContent::Array(blocks) = &mut msg.content {
+                // Check if reordering is needed (any thinking block not at start)
+                let mut found_non_thinking = false;
+                let mut needs_reorder = false;
+                
+                for block in blocks.iter() {
+                    match block {
+                        ContentBlock::Thinking { .. } | ContentBlock::RedactedThinking { .. } => {
+                            if found_non_thinking {
+                                needs_reorder = true;
+                                break;
+                            }
+                        }
+                        _ => {
+                            found_non_thinking = true;
+                        }
+                    }
+                }
+                
+                if needs_reorder {
+                    tracing::warn!(
+                        "[FIX #564] Detected thinking blocks after non-thinking blocks. Reordering to fix protocol violation."
+                    );
+                    
+                    // Partition: thinking blocks first, then other blocks (maintain order within groups)
+                    let mut thinking_blocks: Vec<ContentBlock> = Vec::new();
+                    let mut other_blocks: Vec<ContentBlock> = Vec::new();
+                    
+                    for block in blocks.drain(..) {
+                        match &block {
+                            ContentBlock::Thinking { .. } | ContentBlock::RedactedThinking { .. } => {
+                                thinking_blocks.push(block);
+                            }
+                            _ => {
+                                other_blocks.push(block);
+                            }
+                        }
+                    }
+                    
+                    // Reconstruct: thinking first, then others
+                    blocks.extend(thinking_blocks);
+                    blocks.extend(other_blocks);
+                }
+            }
+        }
+    }
+}
+
 /// 转换 Claude 请求为 Gemini v1internal 格式
+
 pub fn transform_claude_request_in(
     claude_req: &ClaudeRequest,
     project_id: &str,
@@ -116,7 +174,13 @@ pub fn transform_claude_request_in(
     // 原封不动发回导致的 "Extra inputs are not permitted" 错误
     let mut cleaned_req = claude_req.clone();
     clean_cache_control_from_messages(&mut cleaned_req.messages);
+    
+    // [FIX #564] Pre-sort thinking blocks to be first in assistant messages
+    // This handles cases where context compression (kilo) incorrectly reorders blocks
+    sort_thinking_blocks_first(&mut cleaned_req.messages);
+    
     let claude_req = &cleaned_req; // 后续使用清理后的请求
+
 
     // 检测是否有联网工具 (server tool or built-in tool)
     let has_web_search_tool = claude_req
@@ -506,16 +570,48 @@ fn build_contents(
 ) -> Result<Value, String> {
     let mut contents = Vec::new();
     let mut last_thought_signature: Option<String> = None;
+    // Track pending tool_use IDs for recovery
+    let mut pending_tool_use_ids: Vec<String> = Vec::new();
 
     let _msg_count = messages.len();
     for (_i, msg) in messages.iter().enumerate() {
         let role = if msg.role == "assistant" {
+            // Proactive Tool Chain Repair:
+            // If we are about to process an Assistant message, but we still have pending tool_use_ids,
+            // it means the previous turn was interrupted or the user ignored the tool.
+            // We MUST inject a synthetic User message with error results to close the loop.
+            if !pending_tool_use_ids.is_empty() {
+                tracing::warn!("[Elastic-Recovery] Detected interrupted tool chain (Assistant -> Assistant). Injecting synthetic User message for IDs: {:?}", pending_tool_use_ids);
+                
+                let synthetic_parts: Vec<serde_json::Value> = pending_tool_use_ids.iter().map(|id| {
+                    let name = tool_id_to_name.get(id).cloned().unwrap_or(id.clone());
+                    json!({
+                        "functionResponse": {
+                            "name": name,
+                            "response": {
+                                "result": "Tool execution interrupted. No result provided."
+                            },
+                            "id": id
+                        }
+                    })
+                }).collect();
+
+                contents.push(json!({
+                    "role": "user",
+                    "parts": synthetic_parts
+                }));
+                // Clear pending IDs as we have handled them
+                pending_tool_use_ids.clear();
+            }
             "model"
         } else {
             &msg.role
         };
 
         let mut parts = Vec::new();
+
+        // Track tool results in the current turn to identify missing ones
+        let mut current_turn_tool_result_ids = std::collections::HashSet::new();
 
         match &msg.content {
             MessageContent::String(text) => {
@@ -601,7 +697,10 @@ fn build_contents(
                                 }
 
                                 last_thought_signature = Some(sig.clone());
-                                part["thoughtSignature"] = json!(sig);
+                                // [FIX #545] Encode raw signature to Base64 for Gemini
+                                use base64::Engine;
+                                let encoded_sig = base64::engine::general_purpose::STANDARD.encode(sig);
+                                part["thoughtSignature"] = json!(encoded_sig);
                             }
                             parts.push(part);
                         }
@@ -642,6 +741,11 @@ fn build_contents(
                                 }
                             });
                             
+                            // Track pending tool use
+                            if role == "model" {
+                                pending_tool_use_ids.push(id.clone());
+                            }
+                            
                             // [New] 递归清理参数中可能存在的非法校验字段
                             crate::proxy::common::json_schema::clean_json_schema(&mut part);
 
@@ -674,7 +778,10 @@ fn build_contents(
                             // Do NOT add skip_thought_signature_validator - Vertex AI rejects it
 
                             if let Some(sig) = final_sig {
-                                part["thoughtSignature"] = json!(sig);
+                                // [FIX #545] Encode raw signature to Base64 for Gemini
+                                use base64::Engine;
+                                let encoded_sig = base64::engine::general_purpose::STANDARD.encode(sig);
+                                part["thoughtSignature"] = json!(encoded_sig);
                             }
                             parts.push(part);
                         }
@@ -684,22 +791,31 @@ fn build_contents(
                             is_error,
                             ..
                         } => {
+                            // Mark this tool ID as resolved in this turn
+                            current_turn_tool_result_ids.insert(tool_use_id.clone());
                             // 优先使用之前记录的 name，否则用 tool_use_id
                             let func_name = tool_id_to_name
                                 .get(tool_use_id)
                                 .cloned()
                                 .unwrap_or_else(|| tool_use_id.clone());
 
-                            // 处理 content：可能是一个内容块数组或单字符串
+                            // Smart Truncation: strict image removal
+                            // Remove all Base64 images from historical tool results to save context.
+                            // Only allow text.
                             let mut merged_content = match content {
                                 serde_json::Value::String(s) => s.clone(),
                                 serde_json::Value::Array(arr) => arr
                                     .iter()
                                     .filter_map(|block| {
-                                        if let Some(text) =
-                                            block.get("text").and_then(|v| v.as_str())
-                                        {
-                                            Some(text)
+                                        if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
+                                            Some(text.to_string())
+                                        } else if block.get("source").is_some() {
+                                             // If it's an image/document, replace with placeholder
+                                             if block.get("type").and_then(|v| v.as_str()) == Some("image") {
+                                                 Some("[image omitted to save context]".to_string())
+                                             } else {
+                                                 None
+                                             }
                                         } else {
                                             None
                                         }
@@ -708,6 +824,15 @@ fn build_contents(
                                     .join("\n"),
                                 _ => content.to_string(),
                             };
+                            
+                            // Smart Truncation: max chars limit
+                            const MAX_TOOL_RESULT_CHARS: usize = 200_000;
+                            if merged_content.len() > MAX_TOOL_RESULT_CHARS {
+                                tracing::warn!("Truncating tool result from {} chars to {}", merged_content.len(), MAX_TOOL_RESULT_CHARS);
+                                let mut truncated = merged_content.chars().take(MAX_TOOL_RESULT_CHARS).collect::<String>();
+                                truncated.push_str("\n...[truncated output]");
+                                merged_content = truncated;
+                            }
 
                             // [优化] 如果结果为空，注入显式确认信号，防止模型幻觉
                             if merged_content.trim().is_empty() {
@@ -729,7 +854,10 @@ fn build_contents(
 
                             // [修复] Tool Result 也需要回填签名（如果上下文中有）
                             if let Some(sig) = last_thought_signature.as_ref() {
-                                part["thoughtSignature"] = json!(sig);
+                                // [FIX #545] Encode raw signature to Base64 for Gemini
+                                use base64::Engine;
+                                let encoded_sig = base64::engine::general_purpose::STANDARD.encode(sig);
+                                part["thoughtSignature"] = json!(encoded_sig);
                             }
 
                             parts.push(part);
@@ -742,6 +870,34 @@ fn build_contents(
                     }
                 }
             }
+        }
+        
+        // If this is a User message, check if we need to inject missing tool results
+        if role == "user" && !pending_tool_use_ids.is_empty() {
+             let missing_ids: Vec<_> = pending_tool_use_ids.iter()
+                 .filter(|id| !current_turn_tool_result_ids.contains(*id))
+                 .cloned()
+                 .collect();
+
+             if !missing_ids.is_empty() {
+                 tracing::warn!("[Elastic-Recovery] Injecting {} missing tool results into User message (IDs: {:?})", missing_ids.len(), missing_ids);
+                 for id in missing_ids.iter().rev() { // Insert in reverse order to maintain order at index 0? No, just insert at 0.
+                     let name = tool_id_to_name.get(id).cloned().unwrap_or(id.clone());
+                     let synthetic_part = json!({
+                         "functionResponse": {
+                             "name": name,
+                             "response": {
+                                 "result": "Tool execution interrupted. No result provided."
+                             },
+                             "id": id
+                         }
+                     });
+                     // Prepend to ensure they are present before any text
+                     parts.insert(0, synthetic_part);
+                 }
+             }
+             // All pending IDs are now handled (either present or injected)
+             pending_tool_use_ids.clear();
         }
 
         // Fix for "Thinking enabled, assistant message must start with thinking block" 400 error
@@ -1468,4 +1624,73 @@ mod tests {
         assert!(text.contains("[Redacted Thinking: some data]"));
         assert!(parts[0].get("thought").is_none(), "Redacted thinking should NOT have thought: true");
     }
+
+    // ==================================================================================
+    // [FIX #564] Test: Thinking blocks are sorted to be first after context compression
+    // ==================================================================================
+    #[test]
+    fn test_thinking_blocks_sorted_first_after_compression() {
+        // Simulate kilo context compression reordering: text BEFORE thinking
+        let mut messages = vec![
+            Message {
+                role: "assistant".to_string(),
+                content: MessageContent::Array(vec![
+                    // Wrong order: Text before Thinking (simulates kilo compression)
+                    ContentBlock::Text { text: "Some regular text".to_string() },
+                    ContentBlock::Thinking { 
+                        thinking: "My thinking process".to_string(),
+                        signature: Some("valid_signature_1234567890_abcdefghij_klmnopqrstuvwxyz_test".to_string()),
+                        cache_control: None,
+                    },
+                    ContentBlock::Text { text: "More text".to_string() },
+                ]),
+            }
+        ];
+        
+        // Apply the fix
+        sort_thinking_blocks_first(&mut messages);
+        
+        // Verify thinking is now first
+        if let MessageContent::Array(blocks) = &messages[0].content {
+            assert_eq!(blocks.len(), 3, "Should still have 3 blocks");
+            assert!(matches!(blocks[0], ContentBlock::Thinking { .. }), "Thinking should be first");
+            assert!(matches!(blocks[1], ContentBlock::Text { .. }), "Text should be second");
+            assert!(matches!(blocks[2], ContentBlock::Text { .. }), "Text should be third");
+            
+            // Verify content preserved
+            if let ContentBlock::Thinking { thinking, .. } = &blocks[0] {
+                assert_eq!(thinking, "My thinking process");
+            }
+        } else {
+            panic!("Expected Array content");
+        }
+    }
+
+    #[test]
+    fn test_thinking_blocks_no_reorder_when_already_first() {
+        // Correct order: Thinking already first - should not trigger reorder
+        let mut messages = vec![
+            Message {
+                role: "assistant".to_string(),
+                content: MessageContent::Array(vec![
+                    ContentBlock::Thinking { 
+                        thinking: "My thinking".to_string(),
+                        signature: Some("sig123".to_string()),
+                        cache_control: None,
+                    },
+                    ContentBlock::Text { text: "Some text".to_string() },
+                ]),
+            }
+        ];
+        
+        // Apply the fix (should be no-op)
+        sort_thinking_blocks_first(&mut messages);
+        
+        // Verify order unchanged
+        if let MessageContent::Array(blocks) = &messages[0].content {
+            assert!(matches!(blocks[0], ContentBlock::Thinking { .. }), "Thinking should still be first");
+            assert!(matches!(blocks[1], ContentBlock::Text { .. }), "Text should still be second");
+        }
+    }
 }
+

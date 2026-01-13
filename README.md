@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v3.3.19)
+> Hệ thống quản lý tài khoản AI và proxy giao thức chuyên nghiệp (v3.3.24)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-3.3.19-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-3.3.24-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -204,6 +204,37 @@ print(response.choices[0].message.content)
 ## 📝 Nhà phát triển và Cộng đồng
 
 *   **Nhật ký thay đổi (Changelog)**:
+    *   **v3.3.24 (2026-01-12)**:
+        - **Cải tiến UI**: Chuyển sang chọn Model dạng thẻ (Card), tối ưu bố cục hiển thị.
+        - **i18n**: Hỗ trợ Tiếng Việt chính thức (Cảm ơn @ThanhNguyxn), tối ưu dịch thuật.
+    *   **v3.3.23 (2026-01-12)**:
+        - **Thông báo cập nhật**: Giao diện Glassmorphism mới, hỗ trợ Dark Mode và Animation mượt mà.
+        - **Sửa lỗi**: Fix độ phân giải icon menu bar (Retina), Tối ưu nén Claude Thinking.
+        - **Tính năng**: Hỗ trợ thông báo cập nhật song ngữ, Ưu tiên tài khoản quota cao.
+    *   **v3.3.22 (2026-01-12)**:
+        - **Bảo vệ hạn ngạch (Quota Protection)**: Hệ thống bảo vệ nâng cao, hỗ trợ tùy chỉnh model giám sát.
+        - **Smart Warmup**: Tự động làm nóng tài khoản khi hồi phục hạn ngạch, hỗ trợ tùy chỉnh model.
+        - **Tối ưu hiệu năng**: Tối ưu giám sát API (tăng tốc 50x), giảm dung lượng log và bộ nhớ.
+        - **Sửa lỗi**: Ổn định lập lịch cao tải.
+    *   **v3.3.21 (2026-01-11)**:
+        - **Device Fingerprint**: Hệ thống ràng buộc dấu vân tay thiết bị với tài khoản, giảm rủi ro bị Google quét.
+        - **Sửa lỗi Proxy**: Chặn request warmup rác từ Claude Code, sửa lỗi logic giới hạn tốc độ (Rate Limit).
+        - **Log**: Nâng giới hạn log lên 100MB cho phản hồi ảnh lớn.
+    *   **v3.3.20 (2026-01-09)**:
+        - **Cấu hình Timeout**: Tăng giới hạn timeout request lên 3600s (1 giờ) cho các tác vụ xử lý văn bản dài.
+        - **Auto-Stream Conversion**: Tự động chuyển đổi request non-stream sang stream để tránh lỗi 429 của Google API (Hiệu quả 95%+).
+        - **Fix**: Sửa lỗi icon Dock macOS không mở lại được cửa sổ.
+    *   **v3.3.19 (2026-01-09)**:
+        - **Model Routing 2.0**: Hệ thống định tuyến đơn giản hóa, hỗ trợ ký tự đại diện (Wildcard *) và di chuyển cấu hình tự động.
+        - **Rate Limit cấp Model**: Khóa giới hạn riêng biệt cho từng model (Image/Chat), tránh ảnh hưởng chéo.
+        - **Optimistic Reset**: Cơ chế tự động reset khi gặp lỗi 429 giả.
+    *   **v3.3.18 (2026-01-08)**:
+        - **Smart Rate Limit**: Chiến thuật Backoff thông minh theo số lần lỗi, làm mới hạn ngạch thời gian thực.
+        - **Fix**: Sửa lỗi UI dropdown model routing trên Windows.
+    *   **v3.3.17 (2026-01-08)**:
+        - **Thinking Block**: Hỗ trợ hiển thị khối suy nghĩ (Thinking) cho OpenAI/Gemini trong các client như Cherry Studio.
+        - **MCP**: Sửa lỗi tương thích JSON Schema với FastMCP.
+        - **UI**: Cải thiện giao diện cấu hình Router.
     *   **v3.3.16 (2026-01-07)**:
         - **Tối ưu hiệu suất**: Làm mới hạn ngạch đồng thời (giảm từ 30s xuống 6s cho 10 tài khoản).
         - **Cải thiện UI/UX**: Tối ưu giao diện API Proxy, chế độ tối, và chuyển đổi theme.
@@ -361,13 +392,15 @@ print(response.choices[0].message.content)
 <a href="https://github.com/i-smile"><img src="https://github.com/i-smile.png" width="50px" style="border-radius: 50%;" alt="i-smile"/></a>
 <a href="https://github.com/jalen0x"><img src="https://github.com/jalen0x.png" width="50px" style="border-radius: 50%;" alt="jalen0x"/></a>
 <a href="https://linux.do/u/wendavid"><img src="https://linux.do/user_avatar/linux.do/wendavid/48/122218_2.png" width="50px" style="border-radius: 50%;" alt="wendavid"/></a>
+<a href="https://github.com/byte-sunlight"><img src="https://github.com/byte-sunlight.png" width="50px" style="border-radius: 50%;" alt="byte-sunlight"/></a>
+<a href="https://github.com/jlcodes99"><img src="https://github.com/jlcodes99.png" width="50px" style="border-radius: 50%;" alt="jlcodes99"/></a>
+<a href="https://github.com/Vucius"><img src="https://github.com/Vucius.png" width="50px" style="border-radius: 50%;" alt="Vucius"/></a>
+<a href="https://github.com/Koshikai"><img src="https://github.com/Koshikai.png" width="50px" style="border-radius: 50%;" alt="Koshikai"/></a>
+<a href="https://github.com/hakanyalitekin"><img src="https://github.com/hakanyalitekin.png" width="50px" style="border-radius: 50%;" alt="hakanyalitekin"/></a>
 
 感谢所有为本项目付出汗水与智慧的开发者。
-*   **Giấy phép**: Dựa trên giấy phép **CC BY-NC-SA 4.0**, **nghiêm cấm mọi hình thức hành vi thương mại**。
-*   **Tuyên bố bảo mật**: Tất cả dữ liệu tài khoản của ứng dụng này được lưu trữ mã hóa trong cơ sở dữ liệu SQLite cục bộ, trừ khi bật chức năng đồng bộ hóa, dữ liệu sẽ không bao giờ rời khỏi thiết bị của bạn。
-*   **版权许可**: 基于 **CC BY-NC-SA 4.0** 许可，**严禁任何形式的商业行为**。
-*   **安全声明**: 本应用所有账号数据加密存储于本地 SQLite 数据库，除非开启同步功能，否则数据绝不离开您的设备。
->>>>>>> upstream/main
+*   **Giấy phép**: Dựa trên giấy phép **CC BY-NC-SA 4.0**, **nghiêm cấm mọi hình thức hành vi thương mại**.
+*   **Tuyên bố bảo mật**: Tất cả dữ liệu tài khoản của ứng dụng này được lưu trữ mã hóa trong cơ sở dữ liệu SQLite cục bộ, trừ khi bật chức năng đồng bộ hóa, dữ liệu sẽ không bao giờ rời khỏi thiết bị của bạn.
 
 ---
 

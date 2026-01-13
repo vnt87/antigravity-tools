@@ -75,29 +75,16 @@ function Navbar() {
 
     const toggleLanguage = async () => {
         if (!config) return;
-        let newLang = 'zh';
-        if (config.language === 'zh') newLang = 'en';
-        else if (config.language === 'en') newLang = 'vi';
-        else newLang = 'zh';
+        const langs = ['zh', 'en', 'ja', 'tr', 'vi'] as const;
+        const currentIndex = langs.indexOf(config.language as any);
+        const nextLang = langs[(currentIndex + 1) % langs.length];
 
         await saveConfig({
             ...config,
-            language: newLang,
+            language: nextLang,
             theme: config.theme
         });
-        i18n.changeLanguage(newLang);
-    };
-
-    const getNextLangLabel = () => {
-        if (config?.language === 'zh') return 'EN';
-        if (config?.language === 'en') return 'VI';
-        return '中';
-    };
-
-    const getNextLangTitle = () => {
-        if (config?.language === 'zh') return 'Switch to English';
-        if (config?.language === 'en') return 'Chuyển sang Tiếng Việt';
-        return '切换到中文';
+        i18n.changeLanguage(nextLang);
     };
 
     return (
@@ -143,7 +130,7 @@ function Navbar() {
                         <button
                             onClick={toggleTheme}
                             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
-                            title={config?.theme === 'light' ? '切换到深色模式' : '切换到浅色模式'}
+                            title={config?.theme === 'light' ? t('nav.theme_to_dark') : t('nav.theme_to_light')}
                         >
                             {config?.theme === 'light' ? (
                                 <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
@@ -156,10 +143,10 @@ function Navbar() {
                         <button
                             onClick={toggleLanguage}
                             className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
-                            title={getNextLangTitle()}
+                            title={t('nav.switch_to_' + (config?.language === 'zh' ? 'english' : config?.language === 'en' ? 'japanese' : config?.language === 'ja' ? 'turkish' : config?.language === 'tr' ? 'vietnamese' : 'chinese'))}
                         >
                             <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                                {getNextLangLabel()}
+                                {t('nav.switch_to_' + (config?.language === 'zh' ? 'english_short' : config?.language === 'en' ? 'japanese_short' : config?.language === 'ja' ? 'turkish_short' : config?.language === 'tr' ? 'vietnamese_short' : 'chinese_short'))}
                             </span>
                         </button>
                     </div>
